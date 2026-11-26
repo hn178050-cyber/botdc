@@ -143,7 +143,7 @@ Không có `process`, `fs`, `child_process`, `http`, `net`, `os`, `express`, `di
 | `api.core.version` | Phiên bản API core (hiện tại `1.0.0`). |
 | `api.core.language` | `'JavaScript (CommonJS)'`. |
 | `api.core.now()` | ISO timestamp. |
-| `api.core.dbMode` | Luôn `'local'` (file JSON cục bộ). |
+| `api.core.dbMode` | `'neon'` khi có `DATABASE_URL`, ngược lại `'local'` (file JSON). |
 | `api.core.env(name)` | Đọc biến môi trường **đã whitelist** (`PORT`, `RENDER_DOMAIN`, `DB_MODE`, `DISCORD_READY`, `GITHUB_READY`, ...). Không trả secret. |
 | `api.core.events()` | Danh sách event đang có subscriber. |
 | `api.core.pluginId` | ID plugin hiện tại. |

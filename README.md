@@ -3,6 +3,8 @@
 Bot Discord bán/đăng ký tài khoản cloud kèm **web dashboard** đầy đủ: tài khoản web riêng,
 shop lưu kho trên GitHub Gist, nhiệm vụ vượt link, bảng xếp hạng và trang quản trị.
 
+**📖 Hướng dẫn đầy đủ A–Z (cài đặt, lấy DB Neon, deploy, vận hành, xử lý lỗi): [help.md](./help.md)**
+
 ## Tính năng
 
 ### Bot Discord
@@ -72,9 +74,12 @@ npm start
 ```
 
 - Mở `http://localhost:3000` để vào dashboard.
-- Dữ liệu ứng dụng (coin, user, shop, KV…) lưu trong file JSON cục bộ `./data/local-db.json`; không cần cấu hình database REST.
-- Các nguồn dữ liệu/service bên ngoài (Neon, VMOS account edge function, GitHub Gist) là module riêng, không nằm trong lớp DB local này.
+- **Toàn bộ dữ liệu** (coin, user, shop, tasks, plugin, marketplace, ACOIN, KV…) lưu trên **Neon PostgreSQL** qua `DATABASE_URL`. Chạy `neon-schema.sql` một lần trong Neon SQL Editor trước khi start.
+- Riêng **tài khoản VMOS** vẫn do edge function riêng trong `services.js` quản lý, không nằm trong Neon.
+- Kho shop và script plugin lưu trên **GitHub Gist**.
+- Nếu chưa có `DATABASE_URL`, app tự fallback sang file JSON `./data/local-db.json` để dev/demo.
 - Đặt `DISABLE_BOT=1` nếu chỉ muốn chạy web khi dev.
+- Xem [help.md](./help.md) để biết từng bước tạo Neon, lấy connection string, tạo bảng và deploy.
 
 ### GitHub Gist (kho shop)
 Tạo token GitHub có quyền `gist` và điền `GITHUB_TOKEN`. Khi admin tạo sản phẩm:
