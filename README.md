@@ -81,6 +81,14 @@ npm start
 - Đặt `DISABLE_BOT=1` nếu chỉ muốn chạy web khi dev.
 - Xem [help.md](./help.md) để biết từng bước tạo Neon, lấy connection string, tạo bảng và deploy.
 
+### Giữ Render không ngủ (keep-alive)
+Render free ngủ sau ~15 phút không có request. Hệ thống có 2 lớp tự ping `GET /api/health`:
+
+1. **Trong app**: sau khi server chạy, tự ping chính nó mỗi `KEEP_ALIVE_INTERVAL_MS` (mặc định **10 phút**). Dùng `KEEP_ALIVE_URL`, nếu trống thì lấy `RENDER_DOMAIN`. Không ping khi URL là localhost.
+2. **GitHub Actions**: workflow [`.github/workflows/keep-alive.yml`](.github/workflows/keep-alive.yml) chạy mỗi 10 phút để đánh thức app cả khi đang ngủ. Cần thêm secret hoặc variable `RENDER_URL=https://<app>.onrender.com` trong repo (Settings → Secrets and variables → Actions).
+
+Muốn đúng 15 phút thì set `KEEP_ALIVE_INTERVAL_MS=900000`, nhưng Render có thể kịp ngủ trước khi ping tới — 10 phút là giá trị an toàn hơn.
+
 ### GitHub Gist (kho shop)
 Tạo token GitHub có quyền `gist` và điền `GITHUB_TOKEN`. Khi admin tạo sản phẩm:
 1. Server tạo 1 **secret gist** chứa danh sách tài khoản (mỗi dòng 1 tài khoản).

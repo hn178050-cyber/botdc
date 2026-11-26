@@ -11,6 +11,7 @@ const gistStore = require('./gist-store');
 const shop = require('./shop');
 const linkProviders = require('./link-providers');
 const pluginEngine = require('./plugin-engine');
+const keepAlive = require('./keep-alive');
 const { generateUniqueLinkToken, randomId, hashPassword } = require('./utils');
 
 // Marketplace có thể được thêm bởi module khác: require an toàn, gọi phòng thủ.
@@ -37,6 +38,9 @@ const STAR_DAILY_MAX = 3;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Endpoint nhẹ cho keep-alive / external cron kiểm tra app còn thức.
+app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // Dashboard web + API
 app.use(express.static(path.join(__dirname, 'public')));
@@ -374,7 +378,10 @@ app.post('/redeem/claim', express.json(), async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`\n✅ Web Server đang chạy: http://localhost:${PORT}`));
+app.listen(PORT, () => {
+    console.log(`\n✅ Web Server đang chạy: http://localhost:${PORT}`);
+    keepAlive.start();
+});
 
 // Trả thưởng bảng xếp hạng vượt link tự động vào Chủ nhật hàng tuần (giờ VN)
 async function runWeeklyPayoutWithHook(source) {

@@ -1,0 +1,23 @@
+name: Keep Render awake
+
+# Render free spin-down sau ~15 phút không có request. Ping mỗi 10 phút để an toàn.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /api/health
+        env:
+          RENDER_URL: ${{ secrets.RENDER_URL || vars.RENDER_URL }}
+        run: |
+          if [ -z "$RENDER_URL" ]; then
+            echo "::warning::Chưa set RENDER_URL (secret hoặc variable) — bỏ qua."
+            exit 0
+          fi
+          url="${RENDER_URL%/}"
+          echo "Ping $url/api/health"
+          curl -fsS --retry 2 --max-time 20 "$url/api/health" || echo "::warning::Ping thất bại"
