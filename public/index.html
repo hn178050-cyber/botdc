@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title data-i18n="app.title">ASYNCTAS — Dashboard</title>
+<title data-i18n="app.title">NIGARIA CLOUD — Dashboard</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -15,10 +15,10 @@
 <link rel="stylesheet" href="/styles.css?v=20261124r" />
 <script>
   // Áp theme và ngôn ngữ ngay để không bị flash classic / sai ngôn ngữ.
-  try { document.documentElement.dataset.theme = localStorage.getItem('asynctas_theme') || 'bubble'; }
+  try { document.documentElement.dataset.theme = localStorage.getItem('nigaria_theme') || 'bubble'; }
   catch (e) { document.documentElement.dataset.theme = 'bubble'; }
   try {
-    var lang = localStorage.getItem('asynctas_language') || 'vi';
+    var lang = localStorage.getItem('nigaria_language') || 'vi';
     document.documentElement.lang = lang.indexOf('en') === 0 ? 'en' : 'vi';
   } catch (e) { document.documentElement.lang = 'vi'; }
 </script>
@@ -30,9 +30,9 @@
   <div class="auth-glow"></div>
   <div class="auth-card">
     <div class="auth-brand">
-      <div class="brand-logo has-logo"><img src="https://i.postimg.cc/gkbfN52c/Logo-asynctas-1x.png" alt="ASYNCTAS" /></div>
+      <div class="brand-logo has-logo"><img src="https://i.postimg.cc/gkbfN52c/Logo-asynctas-1x.png" alt="NIGARIA CLOUD" /></div>
       <div>
-        <h1>ASYNCTAS</h1>
+        <h1>NIGARIA CLOUD</h1>
         <p data-i18n="auth.subtitle">Coin • Shop • Nhiệm vụ • Device</p>
       </div>
     </div>
@@ -68,8 +68,8 @@
 <div id="app" class="app hidden">
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-logo small has-logo"><img src="https://i.postimg.cc/gkbfN52c/Logo-asynctas-1x.png" alt="ASYNCTAS" /></div>
-      <span class="sidebar-brand-texts"><span id="sidebar-brand-label" data-i18n="nav.brand">ASYNCTAS</span><small id="sidebar-brand-sub" class="sidebar-brand-sub hidden"></small></span>
+      <div class="brand-logo small has-logo"><img src="https://i.postimg.cc/gkbfN52c/Logo-asynctas-1x.png" alt="NIGARIA CLOUD" /></div>
+      <span class="sidebar-brand-texts"><span id="sidebar-brand-label" data-i18n="nav.brand">NIGARIA CLOUD</span><small id="sidebar-brand-sub" class="sidebar-brand-sub hidden"></small></span>
       <button id="sidebar-close" class="sidebar-close" type="button" data-i18n-aria-label="nav.closeMenu" title="Đóng menu"><span class="ico" data-icon="close" data-size="18"></span></button>
     </div>
     <nav id="nav" class="nav">
@@ -77,7 +77,6 @@
       <button class="nav-item" data-view="shop"><span class="ico" data-icon="shop"></span><span data-i18n="nav.shop">Shop</span></button>
       <button class="nav-item" data-view="user-shop"><span class="ico" data-icon="store"></span><span data-i18n="nav.userShop">User Shop</span></button>
       <button class="nav-item" data-view="buydevice"><span class="ico" data-icon="device"></span><span data-i18n="nav.buydevice">Buy Device</span></button>
-      <button class="nav-item" data-view="cloudstatus"><span class="ico" data-icon="status"></span><span data-i18n="nav.cloudstatus">Cloud Status</span></button>
       <button class="nav-item" data-view="tasks"><span class="ico" data-icon="link"></span><span data-i18n="nav.tasks">Vượt link</span></button>
       <button class="nav-item" data-view="google"><span class="ico" data-icon="checkCircle"></span><span data-i18n="nav.google">Tạo tài khoản Google</span></button>
       <button class="nav-item" data-view="giftcode"><span class="ico" data-icon="gift"></span><span data-i18n="nav.giftcode">Giftcode</span></button>
@@ -94,7 +93,7 @@
       <button class="nav-item" id="seller-export-btn" data-seller-tab="export" data-seller-panel="export"><span class="ico" data-icon="arrowDown"></span><span data-i18n="seller.navExport">Xuất dữ liệu</span></button>
       <div class="seller-nav-footer">
         <div class="nav-sep"></div>
-        <button class="nav-item" data-seller-tab="back" data-goto="dashboard"><span class="ico" data-icon="back"></span><span data-i18n="seller.navBack">Quay về ASYNCTAS</span></button>
+        <button class="nav-item" data-seller-tab="back" data-goto="dashboard"><span class="ico" data-icon="back"></span><span data-i18n="seller.navBack">Quay về NIGARIA CLOUD</span></button>
       </div>
     </nav>
     <nav id="admin-nav" class="nav hidden">
@@ -102,13 +101,12 @@
       <button class="nav-item" data-admin-tab="users" data-admin-panel="users"><span class="ico" data-icon="users"></span><span data-i18n="admin.navUsers">Người dùng</span></button>
       <button class="nav-item" data-admin-tab="products" data-admin-panel="products"><span class="ico" data-icon="shop"></span><span data-i18n="admin.navProducts">Sản phẩm</span></button>
       <button class="nav-item" data-admin-tab="plugins" data-admin-panel="plugins"><span class="ico" data-icon="plugin"></span><span data-i18n="admin.navPlugins">Plugin</span></button>
-      <button class="nav-item" data-admin-tab="services" data-admin-panel="services"><span class="ico" data-icon="cookie"></span><span data-i18n="admin.navServices">Dịch vụ</span></button>
       <button class="nav-item" data-admin-tab="google" data-admin-panel="google"><span class="ico" data-icon="checkCircle"></span><span data-i18n="admin.google">Google</span></button>
       <button class="nav-item" data-admin-tab="market" data-admin-panel="market"><span class="ico" data-icon="store"></span><span data-i18n="admin.market">Market</span></button>
       <button class="nav-item" data-admin-tab="appearance" data-admin-panel="appearance"><span class="ico" data-icon="image"></span><span data-i18n="admin.appearance">Giao diện</span></button>
       <div class="seller-nav-footer">
         <div class="nav-sep"></div>
-        <button class="nav-item" data-admin-tab="back" data-goto="dashboard"><span class="ico" data-icon="back"></span><span data-i18n="seller.navBack">Quay về ASYNCTAS</span></button>
+        <button class="nav-item" data-admin-tab="back" data-goto="dashboard"><span class="ico" data-icon="back"></span><span data-i18n="seller.navBack">Quay về NIGARIA CLOUD</span></button>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -288,7 +286,7 @@
             <div class="seller-brand">
               <div class="brand-icon-wrap"><span class="ico" data-icon="seller"></span></div>
               <div class="brand-texts">
-                <span class="brand-name" data-i18n="seller.brandName">ASYNCTAS Seller Hub</span>
+                <span class="brand-name" data-i18n="seller.brandName">NIGARIA CLOUD Seller Hub</span>
                 <span class="brand-sub" data-i18n="seller.brandSub">Quản lý gian hàng &amp; sản phẩm</span>
               </div>
             </div>
@@ -468,12 +466,6 @@
                 <option value="VS">VSPhone</option>
               </select>
             </label>
-            <label id="cloud-mode-wrap" class="hidden"><span data-i18n="device.mode">Chế độ</span>
-              <select id="cloud-mode">
-                <option value="buy" data-i18n="device.modeBuy">Mua cloud</option>
-                <option value="getlink" data-i18n="device.modeGetLink">Lấy link</option>
-              </select>
-            </label>
             <label id="cloud-server-wrap" class="hidden"><span data-i18n="device.region">Khu vực (UGPhone)</span>
               <select id="cloud-server">
                 <option value="SG">Singapore</option>
@@ -502,40 +494,7 @@
             <div id="vmos-free-result" class="result-box hidden"></div>
             <div id="vsphone-free-result" class="result-box hidden"></div>
           </div>
-          <div class="card">
-            <div class="card-head"><h3><span class="ico" data-icon="bolt"></span><span data-i18n="device.quickTitle">Mua nhanh</span></h3></div>
-            <p class="muted" data-i18n="device.quickDesc">Tài khoản trả về ngay. Chỉ trừ coin khi mua thành công.</p>
-            <div class="device-actions">
-              <button class="btn btn-soft" data-meows="UG" data-provider-logo="ugphone">UGPhone — 49 xu</button>
-              <button class="btn btn-soft" data-meows="VSVIP" data-provider-logo="vsphone">VSPhone VIP — 15 xu</button>
-            </div>
-            <div id="meows-result" class="result-box hidden"></div>
-          </div>
         </div>
-      </section>
-
-      <!-- CLOUD STATUS -->
-      <section id="view-cloudstatus" class="view">
-        <div class="section-head">
-          <div><h3><span class="ico" data-icon="status"></span><span data-i18n="status.title">Cloudphone Status</span></h3><p class="muted" data-i18n="status.desc">Trạng thái máy mua nhanh theo thời gian thực. Dữ liệu chỉ mang tính tương đối.</p></div>
-          <button id="cloud-status-refresh" class="btn btn-soft"><span class="ico" data-icon="refresh"></span><span data-i18n="status.refresh">Làm mới</span></button>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3><span class="ico" data-icon="bolt"></span><span data-i18n="device.quickTitle">Mua nhanh</span></h3><span id="cloud-status-time" class="muted">—</span></div>
-          <div class="grid two-col">
-            <div class="status-row">
-              <span data-provider-logo="vmos">VMOS Cloud</span>
-              <span id="status-meows-vmos" class="status-badge">—</span>
-              <small id="status-meows-vmos-msg" class="status-msg"></small>
-            </div>
-            <div class="status-row">
-              <span data-provider-logo="vsphone">VSPhone</span>
-              <span id="status-meows-vsphone" class="status-badge">—</span>
-              <small id="status-meows-vsphone-msg" class="status-msg"></small>
-            </div>
-          </div>
-        </div>
-        <div id="cloud-status-errors" class="result-box error hidden"></div>
       </section>
 
       <!-- TASKS -->
@@ -712,7 +671,7 @@
             <div class="seller-brand">
               <div class="brand-icon-wrap admin-brand-icon"><span class="ico" data-icon="admin"></span></div>
               <div class="brand-texts">
-                <span class="brand-name" data-i18n="admin.brandName">ASYNCTAS Admin Hub</span>
+                <span class="brand-name" data-i18n="admin.brandName">NIGARIA CLOUD Admin Hub</span>
                 <span class="brand-sub" data-i18n="admin.brandSub">Quản trị hệ thống</span>
               </div>
             </div>
@@ -722,7 +681,7 @@
               <div id="admin-user-avatar" class="user-avatar">A</div>
               <div class="user-details"><span id="admin-user-name" class="user-name"></span><span class="role-badge role-admin" data-i18n="admin.roleAdmin">Quản trị viên</span></div>
             </div>
-            <button class="market-btn admin-back-btn" data-goto="dashboard"><span data-i18n="seller.navBack">Quay về ASYNCTAS</span></button>
+            <button class="market-btn admin-back-btn" data-goto="dashboard"><span data-i18n="seller.navBack">Quay về NIGARIA CLOUD</span></button>
           </div>
         </div>
 
@@ -809,39 +768,6 @@
           </div>
         </div>
 
-        <div class="tab-panel" data-admin-panel="services">
-          <div class="grid two-col">
-            <div class="card">
-              <div class="card-head"><h3><span class="ico" data-icon="cookie"></span><span data-i18n="admin.cookieTitle">Cookie dịch vụ nhanh</span></h3><span id="meows-status" class="pill" data-i18n="admin.cookieStatus">Chưa kiểm tra</span></div>
-              <p class="muted" data-i18n="admin.cookieDesc">Dán cookie lấy từ trang cung cấp dịch vụ. Hệ thống tự chuẩn hoá thành .COOKIESECURITY=&lt;cookie&gt; rồi lưu vào database, đổi không cần deploy lại.</p>
-              <label><span data-i18n="admin.cookie">Cookie</span><input id="admin-meows-cookie" type="password" placeholder=".COOKIESECURITY=..." autocomplete="off" /></label>
-              <div class="device-actions">
-                <button id="admin-meows-save-btn" class="btn btn-primary"><span class="ico" data-icon="check"></span><span data-i18n="admin.saveCookie">Lưu cookie</span></button>
-                <button id="admin-meows-clear-btn" class="btn btn-danger"><span class="ico" data-icon="close"></span><span data-i18n="admin.clearCookie">Xoá cookie</span></button>
-              </div>
-              <div id="admin-meows-result" class="result-box hidden"></div>
-            </div>
-            <div class="card">
-              <div class="card-head"><h3><span class="ico" data-icon="bolt"></span><span data-i18n="admin.quickServices">Dịch vụ nhanh</span></h3></div>
-              <ul class="reward-list">
-                <li><span>UGPhone</span><b>49 xu</b></li>
-                <li><span>VSPhone VIP</span><b>15 xu</b></li>
-              </ul>
-              <p class="muted" style="margin-top:14px"><span data-i18n="admin.proxyDesc">Dùng chung cho Cloud Status, Mua nhanh và mua UGPhone.</span></p>
-            </div>
-            <div class="card">
-              <div class="card-head"><h3><span class="ico" data-icon="globe"></span><span data-i18n="admin.proxyTitle">Proxy API (WARP / Worker)</span></h3><span id="status-proxy-source" class="pill">—</span></div>
-              <p class="muted" data-i18n="admin.proxyDesc">Dùng chung cho Cloud Status, Mua nhanh và mua UGPhone. Biến môi trường proxy ưu tiên hơn ô này.</p>
-              <label><span data-i18n="admin.proxyUrl">Proxy URL / SOCKS5</span><input id="admin-status-proxy" placeholder="https://worker.example.com/status" autocomplete="off" /></label>
-              <div class="device-actions">
-                <button id="admin-status-proxy-save-btn" class="btn btn-primary"><span class="ico" data-icon="check"></span><span data-i18n="admin.saveProxy">Lưu proxy</span></button>
-                <button id="admin-status-proxy-clear-btn" class="btn btn-danger"><span class="ico" data-icon="close"></span><span data-i18n="admin.clear">Xoá</span></button>
-              </div>
-              <div id="admin-status-proxy-result" class="result-box hidden"></div>
-            </div>
-          </div>
-        </div>
-
         <div class="tab-panel" data-admin-panel="google">
           <div class="card">
             <div class="card-head">
@@ -884,7 +810,7 @@
         <div class="tab-panel" data-admin-panel="appearance">
           <div class="card">
             <div class="card-head"><h3><span class="ico" data-icon="image"></span><span data-i18n="admin.backgroundTitle">Ảnh nền dashboard</span></h3><span class="pill" data-i18n="admin.backgroundBadge">Áp dụng cho mọi user</span></div>
-            <p class="muted" data-i18n="admin.backgroundDesc">Dán URL ảnh trực tiếp (jpg/png/webp). Để trống rồi bấm Dùng mặc định để quay lại ảnh ASYNCTAS. Không cần deploy lại.</p>
+            <p class="muted" data-i18n="admin.backgroundDesc">Dán URL ảnh trực tiếp (jpg/png/webp). Để trống rồi bấm Dùng mặc định để quay lại ảnh NIGARIA CLOUD. Không cần deploy lại.</p>
             <label><span data-i18n="admin.backgroundUrl">URL ảnh nền</span><input id="admin-background-url" type="text" placeholder="https://..." autocomplete="off" /></label>
             <div class="device-actions">
               <button id="admin-background-save-btn" class="btn btn-primary"><span class="ico" data-icon="check"></span><span data-i18n="admin.saveBackground">Lưu nền</span></button>

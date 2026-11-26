@@ -75,7 +75,7 @@ async function fetchScript(url) {
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Chỉ hỗ trợ link http/https.');
 
     const res = await fetch(value, {
-        headers: { 'User-Agent': 'ASYNCTAS-plugin-loader' },
+        headers: { 'User-Agent': 'nigaria-plugin-loader' },
         signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) throw new Error(`Không tải được script (HTTP ${res.status}).`);
@@ -104,7 +104,6 @@ function publicEnv(name) {
         LINK4M_READY: !!process.env.LINK4M_API_KEY,
         LAYMA_READY: !!process.env.LAYMA_TOKEN,
         BBMKTS_READY: !!(process.env.BBMKTS_API_TOKEN || process.env.VUOTNHANH_API_TOKEN),
-        MEOWS_PROXY_READY: !!process.env.MEOWS_API_PROXY,
     };
     const key = String(name || '');
     return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
@@ -397,7 +396,7 @@ async function loadPlugin(row) {
             balanceKey: (user) => context.web.balanceKey
                 ? context.web.balanceKey(user)
                 : (user && user.discord_id ? String(user.discord_id) : `web_${user && user.id}`),
-            cookieName: () => context.web.COOKIE_NAME || 'asynctas_session',
+            cookieName: () => context.web.COOKIE_NAME || 'nigaria_session',
             me: async (req) => {
                 const u = req && req.webUser;
                 if (!u) return null;
@@ -469,25 +468,10 @@ async function loadPlugin(row) {
         // --- Dịch vụ device / cloud ---
         services: {
             cloudNames: services.CLOUD_NAMES,
-            costs: { reg: services.REG_COST, ...services.MEOWS_COSTS },
+            costs: { reg: services.REG_COST },
             regVmos: () => services.regVmosAccount(),
             regVsphone: () => services.regVsphoneAccount(),
             buyHanami: (provider, server, input) => services.buyHanami(provider, server, input),
-            meows: (provider, opts = {}) => {
-                const p = String(provider || '').toUpperCase();
-                if (opts.confirm !== true) {
-                    return Promise.resolve({
-                        ok: false,
-                        dryRun: true,
-                        provider: p,
-                        cost: services.MEOWS_COSTS[p] || null,
-                        message: 'Dry-run. Truyền { confirm: true } để mua thật bằng xu.',
-                    });
-                }
-                return services.buyMeows(p);
-            },
-            cloud: (force = false) => services.getCloudStatus({ force: !!force }),
-            hasMeowsCookie: async () => !!(await services.getMeowsCookie()),
         },
 
         // --- Link / BXH / thưởng ---

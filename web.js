@@ -21,7 +21,7 @@ const gmailTasks = require('./gmail-tasks');
 const { getTodayString, generateUniqueLinkToken, sha256, randomId, hashPassword, verifyPassword } = require('./utils');
 
 const router = express.Router();
-const COOKIE_NAME = 'asynctas_session';
+const COOKIE_NAME = 'nigaria_session';
 const SESSION_DAYS = 30;
 const PAY_MIN = 10;
 const PAY_FEE_RATE = 0.05;
@@ -129,7 +129,7 @@ async function bindDevice(req, res, userId, allowRebind = false) {
 }
 
 // Nền mặc định cho toàn dashboard (admin đổi trong Quản trị → Giao diện).
-const DEFAULT_BACKGROUND_URL = 'https://a.storyblok.com/f/178900/1200x1697/7cea549b0c/sword-art-online-clear-visual.jpg/m/filters:quality(95)format(webp)';
+const DEFAULT_BACKGROUND_URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQl1K8O2o7bsOUGL4ZqQVEkPiYlc5Mqd8XvTHgLND1FZA&s=10';
 const DEFAULT_YOUTUBE_URL = 'https://youtube.com';
 const DEFAULT_DISCORD_URL = 'https://discord.com';
 const avatarCache = new Map();
@@ -706,93 +706,6 @@ router.get('/api/purchases', requireAuth, ah(async (req, res) => {
     });
 }));
 
-// Test POST qua chain hiện tại, KHÔNG gọi API mua máy (đích là /api/cloud-status).
-router.get('/api/debug/meows-post', ah(async (req, res) => {
-    try {
-        res.json(await services.probeMeowsPost());
-    } catch (e) {
-        res.json({ error: e.message });
-    }
-}));
-
-// ==================== CHẨN ĐOÁN PROXY (public, không lộ cookie) ====================
-router.get('/api/debug/meows', ah(async (req, res) => {
-    const mask = (u) => String(u || '').replace(/\/\/[^@/]*@/, '//***@');
-    const proxyEnv = mask(process.env.MEOWS_API_PROXY || process.env.MEOWS_STATUS_PROXY || '');
-    const proxyDb = mask((await db.getKv('meows_status_proxy')) || '');
-    const proxy = services.normalizeStatusProxy(process.env.MEOWS_API_PROXY || process.env.MEOWS_STATUS_PROXY || (await db.getKv('meows_status_proxy')) || '');
-    const url = 'https://meows.vn/api/cloud-status';
-    const headers = { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' };
-
-    async function probe(target, opts) {
-        try {
-            const r = await fetch(target, opts);
-            return { status: r.status, body: (await r.text()).replace(/\s+/g, ' ').slice(0, 140) };
-        } catch (e) {
-            return { error: e.message };
-        }
-    }
-
-    const direct = await probe(url, { headers, signal: AbortSignal.timeout(8000) });
-    let viaProxy = null;
-    if (proxy) {
-        if (/^https?:\/\//i.test(proxy)) {
-            const u = new URL(proxy);
-            u.searchParams.set('url', url);
-            const key = String(process.env.MEOWS_PROXY_KEY || '').trim();
-            viaProxy = await probe(u.toString(), {
-                headers: { ...headers, ...(key ? { 'x-proxy-key': key } : {}) },
-                signal: AbortSignal.timeout(8000),
-                redirect: 'manual',
-            });
-        } else {
-            const { SocksProxyAgent } = require('socks-proxy-agent');
-            const nodeFetch = require('node-fetch');
-            viaProxy = await probe(url, { agent: new SocksProxyAgent(proxy), timeout: 8000, headers });
-        }
-    }
-
-    let statusSource = null;
-    try { statusSource = (await services.getCloudStatus({ force: true })).source; } catch (e) { /* bỏ qua */ }
-
-    // Gọi /echo của meows-api để thấy header mà render thực sự gửi tới proxy.
-    let echo = null;
-    if (proxy && /^https?:\/\//i.test(proxy)) {
-        try {
-            const u = new URL(proxy);
-            u.pathname = '/echo';
-            u.search = '';
-            u.searchParams.set('url', 'probe');
-            const key = String(process.env.MEOWS_PROXY_KEY || '').trim();
-            const r = await fetch(u.toString(), {
-                headers: key ? { 'x-proxy-key': key } : {},
-                signal: AbortSignal.timeout(8000),
-            });
-            echo = { status: r.status, data: await r.json().catch(() => null) };
-        } catch (e) { echo = { error: e.message }; }
-    }
-
-    res.json({
-        renderWarp: process.env.RENDER_WARP || '0',
-        proxyEnv,
-        proxyDb,
-        proxyActive: mask(proxy),
-        cookieSet: !!(await services.getMeowsCookie()),
-        direct,
-        viaProxy,
-        statusSource,
-        echo,
-    });
-}));
-
-// ==================== CLOUDPHONE STATUS (public) ====================
-router.get('/api/status/cloud', ah(async (req, res) => {
-    const ip = req.ip || 'unknown';
-    if (!rateLimit(`cloud:${ip}`, 30, 60 * 1000)) return res.status(429).json({ error: 'Quá nhiều lần kiểm tra, vui lòng đợi.' });
-    const data = await services.getCloudStatus({ force: req.query.force === '1' });
-    res.json(data);
-}));
-
 // ==================== DEVICE ====================
 router.post('/api/device/buycloud', requireAuth, ah(async (req, res) => {
     const provider = String(req.body.provider || '').toUpperCase();
@@ -833,85 +746,6 @@ router.post('/api/device/reg', requireAuth, ah(async (req, res) => {
             userId: result.userId || null,
             copyText: result.copyText,
             newBalance,
-        });
-    } finally {
-        busyUsers.delete(key);
-    }
-}));
-
-// Mua device qua Meows (UGPhone 49 xu / VSPhone VIP 15 xu)
-router.post('/api/device/meows', requireAuth, ah(async (req, res) => {
-    const provider = String(req.body.provider || '').toUpperCase();
-    const cost = services.MEOWS_COSTS[provider];
-    if (!cost) return res.status(400).json({ error: 'Dịch vụ không hợp lệ.' });
-
-    const key = balanceKey(req.webUser);
-    if (busyUsers.has(key)) return res.status(409).json({ error: 'Bạn đang có thao tác khác, thử lại sau.' });
-
-    const balance = await db.getCoins(key);
-    if (balance < cost) return res.status(400).json({ error: `Bạn không đủ coin (cần ${cost}). Số dư: ${balance}.` });
-
-    busyUsers.add(key);
-    try {
-        const result = await services.buyMeows(provider);
-        const newBalance = await db.updateCoins(key, -cost);
-        hook('web:device:meows', { provider, userKey: key, cost, newBalance, source: result.source });
-        res.json({
-            ok: true,
-            provider: services.MEOWS_NAMES[provider],
-            kind: result.kind || 'meows',
-            cost,
-            account: result.account,
-            password: result.password,
-            token: result.token || null,
-            userId: result.userId || null,
-            copyText: result.copyText,
-            fields: result.fields || [],
-            injectSnippet: result.injectSnippet || null,
-            injectRawUrl: result.injectRawUrl || null,
-            injectError: result.injectError || null,
-            injectFallback: !!result.injectFallback,
-            youtubeUrl: result.youtubeUrl || null,
-            discordUrl: result.discordUrl || null,
-            details: result.details,
-            message: result.message,
-            source: result.source,
-            newBalance,
-        });
-    } finally {
-        busyUsers.delete(key);
-    }
-}));
-
-// Tạo share link VSPhone từ full response Fast-buy (không trừ coin).
-router.post('/api/device/vsphone/getss', requireAuth, ah(async (req, res) => {
-    const inputData = String(req.body.inputData || '').trim();
-    if (!inputData) return res.status(400).json({ error: 'Dán full response VSPhone Fast vào ô dữ liệu.' });
-    const key = balanceKey(req.webUser);
-    if (busyUsers.has(key)) return res.status(409).json({ error: 'Bạn đang có thao tác khác, thử lại sau.' });
-    busyUsers.add(key);
-    try {
-        const result = await services.getVsphoneShareLink(inputData);
-        if (!result.ok) return res.status(400).json({ error: result.message });
-        hook('web:device:vsphone-getss', {
-            userKey: key, orderId: result.orderId, shareToken: result.shareToken, source: result.source,
-        });
-        res.json({
-            ok: true,
-            account: result.account,
-            password: result.password,
-            token: result.token,
-            userId: result.userId,
-            orderId: result.orderId,
-            shareToken: result.shareToken,
-            shareUrl: result.shareUrl,
-            pad: result.pad,
-            fields: result.fields,
-            copyText: result.copyText,
-            rawResponse: result.rawResponse,
-            data: result.data,
-            message: result.message,
-            source: result.source,
         });
     } finally {
         busyUsers.delete(key);
@@ -1060,7 +894,7 @@ router.post('/api/tasks/link', requireAuth, ah(async (req, res) => {
     // Gắn trình duyệt tạo link vào cookie httpOnly + lưu theme đang dùng cho trang redeem.
     let browserId = String(req.get('x-device-id') || (req.body && req.body.browserId) || '').trim();
     if (!browserId) browserId = crypto.randomBytes(16).toString('hex');
-    res.cookie('asynctas_browser', browserId, {
+    res.cookie('nigaria_browser', browserId, {
         httpOnly: true, sameSite: 'lax', path: '/', maxAge: 30 * 24 * 60 * 60 * 1000,
     });
     let theme = String((req.body && req.body.theme) || '').toLowerCase();
@@ -1483,56 +1317,6 @@ router.delete('/api/admin/social-links', requireAdmin, ah(async (req, res) => {
     res.json({ ok: true, youtubeUrl: DEFAULT_YOUTUBE_URL, discordUrl: DEFAULT_DISCORD_URL });
 }));
 
-// ==================== ADMIN: MEOWS COOKIE ====================
-router.get('/api/admin/meows/cookie', requireAdmin, ah(async (req, res) => {
-    const cookie = await db.getKv(services.MEOWS_COOKIE_KEY);
-    res.json({
-        cookie: cookie || '',
-        configured: Boolean(cookie),
-        updatedAt: (await db.getKv('meows_cookie_updated_at')) || null,
-        format: '.COOKIESECURITY=<cookie>',
-    });
-}));
-
-router.post('/api/admin/meows/cookie', requireAdmin, ah(async (req, res) => {
-    const cookie = services.normalizeMeowsCookie(req.body.cookie);
-    if (!cookie) return res.status(400).json({ error: 'Nhập cookie (có thể dán cả .COOKIESECURITY=...).' });
-    await db.setKv(services.MEOWS_COOKIE_KEY, cookie);
-    const updatedAt = new Date().toISOString();
-    await db.setKv('meows_cookie_updated_at', updatedAt);
-    hook('web:admin:cookie', { by: req.webUser.id, configured: true, updatedAt });
-    res.json({ ok: true, cookie, configured: true, updatedAt });
-}));
-
-router.delete('/api/admin/meows/cookie', requireAdmin, ah(async (req, res) => {
-    await db.setKv(services.MEOWS_COOKIE_KEY, '');
-    await db.setKv('meows_cookie_updated_at', new Date().toISOString());
-    hook('web:admin:cookie', { by: req.webUser.id, configured: false });
-    res.json({ ok: true, configured: false });
-}));
-
-// Proxy SOCKS5 cho Cloud Status (WARP). Env MEOWS_STATUS_PROXY có ưu tiên cao hơn.
-router.get('/api/admin/status-proxy', requireAdmin, ah(async (req, res) => {
-    res.json({
-        proxy: (await db.getKv('meows_status_proxy')) || '',
-        envProxy: services.normalizeStatusProxy(process.env.MEOWS_STATUS_PROXY),
-        example: 'http://IP_VPS:43055 (meows-api) · socks5h://user:pass@host:1080 · https://worker.example.com/status',
-    });
-}));
-
-router.post('/api/admin/status-proxy', requireAdmin, ah(async (req, res) => {
-    const proxy = services.normalizeStatusProxy(req.body.proxy);
-    if (!proxy) return res.status(400).json({ error: 'Nhập địa chỉ SOCKS5 (VD: 127.0.0.1:40000).' });
-    await db.setKv('meows_status_proxy', proxy);
-    hook('web:admin:proxy', { proxy, by: req.webUser.id });
-    res.json({ ok: true, proxy });
-}));
-
-router.delete('/api/admin/status-proxy', requireAdmin, ah(async (req, res) => {
-    await db.setKv('meows_status_proxy', '');
-    res.json({ ok: true, proxy: '' });
-}));
-
 // ==================== ADMIN: PLUGIN ====================
 router.get('/api/admin/plugins', requireAdmin, ah(async (req, res) => {
     const rows = await db.getPlugins();
@@ -1559,7 +1343,7 @@ router.post('/api/admin/plugins', requireAdmin, ah(async (req, res) => {
 
     const code = await pluginEngine.fetchScript(sourceUrl);
     const filename = github.safeFilename(`${name}-plugin`);
-    const gist = await github.createGist(filename, code, `ASYNCTAS plugin • ${name}`);
+    const gist = await github.createGist(filename, code, `NIGARIA CLOUD plugin • ${name}`);
     const row = await db.createPlugin({
         id: randomId(),
         name,
@@ -1590,7 +1374,7 @@ router.post('/api/admin/plugins/:id/source', requireAdmin, ah(async (req, res) =
     if (row.gist_id) {
         await github.writeGistFile(row.gist_id, row.gist_filename, code);
     } else {
-        const gist = await github.createGist(github.safeFilename(`${row.name}-plugin`), code, `ASYNCTAS plugin • ${row.name}`);
+        const gist = await github.createGist(github.safeFilename(`${row.name}-plugin`), code, `NIGARIA CLOUD plugin • ${row.name}`);
         row.gist_id = gist.id;
         row.gist_filename = gist.filename;
     }
@@ -1656,9 +1440,9 @@ router.get('/api/debug/github', requireAuth, ah(async (req, res) => {
     let createError = null;
     try {
         created = await github.createGist(
-            `asynctas-debug-${Date.now().toString(16)}.js`,
-            '// ASYNCTAS gist debug\nconsole.log("ok");\n',
-            'ASYNCTAS debug',
+            `nigaria-debug-${Date.now().toString(16)}.js`,
+            '// NIGARIA gist debug\nconsole.log("ok");\n',
+            'NIGARIA debug',
         );
     } catch (e) {
         createError = { message: e.message, raw: github.getLastError() };

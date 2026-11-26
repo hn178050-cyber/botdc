@@ -81,7 +81,7 @@ async function shorten(id, longUrl) {
         if (!token) throw new Error('bbmkts chưa được cấu hình (BBMKTS_API_TOKEN).');
         const apiUrl = `https://bbmkts.com/dapi?token=${encodeURIComponent(token)}&longurl=${encodeURIComponent(target)}&format=text`;
         const res = await fetch(apiUrl, {
-            headers: { 'User-Agent': 'ASYNCTAS-link', Accept: 'text/plain, application/json' },
+            headers: { 'User-Agent': 'nigaria-link', Accept: 'text/plain, application/json' },
             signal: AbortSignal.timeout(15000),
         });
         const raw = (await res.text()).trim();

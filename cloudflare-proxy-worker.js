@@ -1,14 +1,14 @@
 /**
- * Cloudflare Worker proxy cho ASYNCTAS.
+ * Cloudflare Worker proxy cho NIGARIA CLOUD.
  * Cách dùng: Cloudflare Dashboard -> Workers & Pages -> Create Worker -> dán file này.
- * Chỉ cho phép meows.vn / hanaminikata.com để tránh biến thành open proxy.
+ * Chỉ cho phép hanaminikata.com để tránh biến thành open proxy.
  *
  * Tuỳ chọn bảo mật:
  *   - Đặt secret PROXY_KEY trên Worker.
- *   - Đặt MEOWS_PROXY_KEY cùng giá trị trong .env trên Render.
+ *   - Đặt API_PROXY_KEY cùng giá trị trong .env trên Render.
  */
 
-const ALLOWED_HOSTS = new Set(['meows.vn', 'www.meows.vn', 'hanaminikata.com']);
+const ALLOWED_HOSTS = new Set(['hanaminikata.com']);
 
 export default {
   async fetch(request, env) {

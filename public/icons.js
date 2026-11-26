@@ -1,4 +1,4 @@
-/* ASYNCTAS icons — inline SVG, stroke-based, currentColor only.
+/* NIGARIA CLOUD icons — inline SVG, stroke-based, currentColor only.
  * Contract API: window.icons = { icon(name, size = 20), names: [...] }
  * No ES module. All icons use viewBox 0 0 24 24, stroke currentColor, width 1.8.
  */
@@ -106,5 +106,5 @@
   window.icons = { icon, names: NAMES };
   // backwards-compatible aliases for code written during integration
   window.icon = icon;
-  window.ASYNCTAS_ICONS = PATHS;
+  window.NIGARIA_ICONS = PATHS;
 })();

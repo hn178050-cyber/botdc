@@ -1,4 +1,4 @@
-# ASYNCTAS — Discord Bot + Web Dashboard
+# NIGARIA CLOUD — Discord Bot + Web Dashboard
 
 Bot Discord bán/đăng ký tài khoản cloud kèm **web dashboard** đầy đủ: tài khoản web riêng,
 shop lưu kho trên GitHub Gist, nhiệm vụ vượt link, bảng xếp hạng và trang quản trị.
@@ -6,22 +6,21 @@ shop lưu kho trên GitHub Gist, nhiệm vụ vượt link, bảng xếp hạng 
 ## Tính năng
 
 ### Bot Discord
-- `/reg` — panel chọn dịch vụ: VMOS (10 xu), VSPhone (10 xu), **UGPhone (49 xu)** và **VSPhone VIP (15 xu)**. Hai dịch vụ mua nhanh dùng chung luồng với `/asynctas` (`/meows` là lệnh cũ, vẫn hoạt động).
+- `/reg` — panel chọn dịch vụ: VMOS (10 xu) và VSPhone (10 xu), kèm bản free mỗi ngày.
 - `/buycloud` — mua máy cloud qua Hanami (UGPhone / VMOS / VSPhone).
 - `/getlink` — nhận link nhiệm vụ: **Link4M / LayMa +50 xu** (2 lượt/ngày), **bbmkts +25 xu** (1 lượt/ngày).
 - `/tasks` — xem tiến độ từng dịch vụ hôm nay (cùng dữ liệu `GET /api/tasks`).
 - `/vmosfree` — lấy 1 tài khoản VMOS free mỗi ngày (cần đã vượt ≥ 1 link).
-- `/cloudstatus` / `/cloudphone_status` — xem trạng thái VMOS Cloud / VSPhone (cùng nguồn với web). `/cloudphone_status lam_moi:true` bỏ cache như nút Làm mới trên web.
+- `/vsphonefree` — lấy 1 VSPhone thường free mỗi ngày (cần đã vượt ≥ 1 link).
 - `/theme`, `/username`, `/history`, `/buy`, `/leaderboard` — đồng bộ các chức năng web (giao diện, tên tài khoản, lịch sử mua/chuyển, mua shop, BXH) lên Discord.
-- `/wallpaper`, `/proxy`, `/cookie` — (Admin) đổi ảnh nền, proxy trạng thái và cookie dịch vụ mua nhanh ngay trong Discord.
+- `/wallpaper` — (Admin) đổi ảnh nền web ngay trong Discord.
 - `/shop` — xem danh sách sản phẩm, giá, logo và tồn kho.
 - `/connect <token>` — liên kết tài khoản web với Discord để **cộng dồn coin** (coin web + coin Discord).
 - `/token` — lấy **token cố định** của tài khoản (bằng `web_users.link_token`); dùng để đăng nhập web hoặc `/connect`.
-- `/asynctas` — mua nhanh **UGPhone (49 xu)** hoặc **VSPhone VIP (15 xu)** (alias cũ: `/meows`).
 - `/plugin ten:lenh` — gọi lệnh do plugin đăng ký.
 - `/vi`, `/daily`, `/code`, `/pay`, `/star`, `/sdone`, `/adcoin`, `/gen`, `/op`, `/unop`, `/clear`.
 - `/seller` — gửi yêu cầu làm seller (`request`); admin duyệt (`trust`, chỉ định `user` hoặc `id`) và xem danh sách (`list`).
-- `/exchange` — đổi `coin -> ACOIN` hoặc `ACOIN -> coin` theo tỷ giá hiện hành (mặc định **5 coin = 1 ACOIN**). `soluong` là số coin khi đổi sang ACOIN (`floor(soluong / rate)`) hoặc số ACOIN khi đổi sang coin (`soluong * rate`).
+- `/exchange` — đổi `coin -> ACOIN` hoặc `ACOIN -> coin` theo tỷ giá hiện hành (mặc định **5 coin = 1 ACOIN**).
 - `/acoin` — xem số dư ACOIN và tỷ giá quy đổi.
 - `/shops` — tìm kiếm shop trên marketplace (lọc theo `recommended` / `newest` / `oldest` / `cheapest` / `priciest` / `topRated` / `bestSelling`).
 - `/appeal` — (Admin) chấp nhận hoặc từ chối review/khiếu nại theo `id`, kèm ghi chú.
@@ -33,18 +32,18 @@ shop lưu kho trên GitHub Gist, nhiệm vụ vượt link, bảng xếp hạng 
 - Số dư coin hiển thị ở góc trên; nút bấm trực quan cho mọi chức năng.
 - **Shop**: mua hàng, xem đồ đã mua, copy tài khoản.
 - **Giftcode**: nhập mã quà để nhận coin (mã tạo từ lệnh `/gen`).
-- **Buy Device**: mua cloud (Hanami), reg tài khoản và mua nhanh (UGPhone 49 xu / VSPhone VIP 15 xu).
-- **Cloud Status** (hiển thị cho mọi người, không cần đăng nhập): trạng thái **VMOS Cloud** và **VSPhone** của dịch vụ mua nhanh (lấy từ `GET https://meows.vn/api/cloud-status`). Tự làm mới mỗi 60s; API public `GET /api/status/cloud` (cache 60s, `?force=1` để lấy mới ngay). `status: offline` = hết máy. Nếu IP server bị Cloudflare chặn (`403 - Just a moment...`), hệ thống tự thử `www.meows.vn` rồi tới proxy đọc nội dung; ô thời gian sẽ hiện `proxy` khi đang dùng đường dự phòng. Cả 3 đường cùng lỗi mới hiện thông báo lỗi.
-- **Nhiệm vụ**: lấy link vượt link, theo dõi lượt trong ngày & trong tuần. 3 dịch vụ dùng chung cấu hình `link-providers.js`: Link4M/LayMa 50 xu (2 lượt/ngày), **bbmkts 25 xu (1 lượt/ngày)**. Token bbmkts lấy từ `BBMKTS_API_TOKEN` (alias `VUOTNHANH_API_TOKEN`), gọi `https://bbmkts.com/dapi?token=...&longurl=...&format=text`; hỗ trợ cả response TEXT lẫn JSON `{"status":"success","bbmktsUrl":"..."}`. Web và bot cùng đọc một cấu hình nên reward luôn đồng nhất.
+- **Buy Device**: mua cloud qua Hanami (UGPhone / VMOS / VSPhone), reg tài khoản VMOS/VSPhone và nhận bản free mỗi ngày.
+- **Nhiệm vụ**: lấy link vượt link, theo dõi lượt trong ngày & trong tuần. 3 dịch vụ dùng chung cấu hình `link-providers.js`: Link4M/LayMa 50 xu (2 lượt/ngày), **bbmkts 25 xu (1 lượt/ngày)**. Web và bot cùng đọc một cấu hình nên reward luôn đồng nhất.
 - **Điểm danh mỗi ngày**: nút claim nhận random **1–20 xu** (cùng bucket với `/daily` Discord). Nếu đã vượt **≥ 1 link** thì mỗi ngày còn lấy được **1 tài khoản VMOS free**, không trừ xu.
 - **Xếp hạng**: coin · vượt link **7 ngày** (có thưởng, reset sau mỗi kỳ) · vượt link **tổng** (không thưởng). Tên hiển thị là username, không phải ID số.
 - **Chuyển tiền**: chuyển coin cho người khác (phí 5%).
 - **Hồ sơ**: đổi mật khẩu, xem/copy token liên kết Discord.
-- **Quản trị** (chỉ hiện với tài khoản đã liên kết Discord admin), chia 4 tab:
+- **Quản trị** (chỉ hiện với tài khoản đã liên kết Discord admin), gồm các tab:
   - **User**: danh sách người dùng, đơn hàng, lịch sử trả thưởng.
   - **Shop**: tạo sản phẩm, upload kho lên GitHub Gist, đặt giá, thêm kho, sửa/xoá.
-  - **Plugin**: dán link raw script → tự lưu Gist → lưu gist_id vào DB → load chạy ngay (không deploy lại). Plugin viết bằng **JavaScript/CommonJS**, có API nội bộ bot/web, event bus và gọi API chéo plugin. Xem [docs/PLUGINS.md](docs/PLUGINS.md).
-  - **Cookie**: nhập/lưu cookie dùng cho 2 dịch vụ mua nhanh; tự chuẩn hoá `.COOKIESECURITY=<cookie>`, đổi không cần deploy.
+  - **Plugin**: dán link raw script → tự lưu Gist → lưu gist_id vào DB → load chạy ngay (không deploy lại). Xem [docs/PLUGINS.md](docs/PLUGINS.md).
+  - **Google**: duyệt nhiệm vụ Gmail và chỉnh link mạng xã hội.
+  - **Market** và **Giao diện**: cấu hình marketplace, ảnh nền dashboard.
 
 ### Thưởng bảng xếp hạng vượt link (tự động mỗi Chủ nhật)
 | Hạng | Thưởng |
@@ -73,12 +72,9 @@ npm start
 ```
 
 - Mở `http://localhost:3000` để vào dashboard.
-- Nếu **không** cấu hình `SUPABASE_URL`/`SUPABASE_KEY`, hệ thống tự dùng file JSON cục bộ
-  `./data/local-db.json` (tiện dev/demo). Khi deploy thật hãy dùng Supabase.
+- Dữ liệu ứng dụng (coin, user, shop, KV…) lưu trong file JSON cục bộ `./data/local-db.json`; không cần cấu hình database REST.
+- Các nguồn dữ liệu/service bên ngoài (Neon, VMOS account edge function, GitHub Gist) là module riêng, không nằm trong lớp DB local này.
 - Đặt `DISABLE_BOT=1` nếu chỉ muốn chạy web khi dev.
-
-### Supabase
-Chạy `supabase_setup.sql` **hoặc** `supabase_new_tables.sql` trong **SQL Editor**: cả hai đều tạo đầy đủ 21 bảng (kể cả bảng cũ của bot), dùng `if not exists` nên chạy lại nhiều lần không lỗi và không xoá dữ liệu cũ. Nếu DB đã có bảng từ bản trước, file sẽ tự bổ sung cột còn thiếu rồi bật RLS.
 
 ### GitHub Gist (kho shop)
 Tạo token GitHub có quyền `gist` và điền `GITHUB_TOKEN`. Khi admin tạo sản phẩm:
@@ -105,8 +101,6 @@ module.exports = function (api) {
 };
 ```
 
-Có sẵn nhiều namespace: `core`, `plugin`, routes/commands, `events`, `plugins` (expose/call), `bot`, `web`, `coins`, `users`, `shop`, `services`, `link`, `gift`, `daily`, `format`, `http`, `kv`, `onUnload`.
-
 📖 **Tài liệu đầy đủ (API + toàn bộ event `web:*` / `bot:*` + bảo mật):** [docs/PLUGINS.md](docs/PLUGINS.md).
 
 Chỉ admin mới được cài/sửa plugin; sandbox chỉ để hạn chế, không phải hàng rào bảo mật tuyệt đối — hãy dùng nguồn script tin cậy.
@@ -118,98 +112,19 @@ Chỉ admin mới được cài/sửa plugin; sandbox chỉ để hạn chế, k
 
 Admin được xác định bởi `ADMIN_DISCORD_ID` (owner) hoặc bảng `admins` (cấp qua `/op`).
 
-### Cookie dịch vụ nhanh
-Vào **Quản trị → Cookie**, dán cookie lấy từ trang cung cấp dịch vụ (có thể dán cả chuỗi `.COOKIESECURITY=...` hoặc cả header `Cookie: ...`).
-Server tự lưu vào bảng `kv` (key `meows_cookie`) dạng `.COOKIESECURITY=<cookie>`; **không cần tạo bảng mới**.
-Cookie hết hạn chỉ cần cập nhật ở đây, không deploy lại. Dùng cho `/asynctas` và mục **Buy Device → Mua nhanh**.
+### Proxy API (tuỳ chọn, dùng cho Hanami)
+IP Render đôi khi bị nhà cung cấp/Cloudflare chặn. Proxy sau đây chỉ áp dụng cho luồng mua cloud qua Hanami khi bật `HANAMI_USE_PROXY=1`.
 
-### Proxy API (Render / WARP / Worker) — dùng chung
-IP Render bị nhà cung cấp/Cloudflare chặn (`403 - Just a moment...`), nhưng **IP Cloudflare (WARP / Worker)** thì dùng được. Proxy này áp dụng cho:
+- **Cloudflare Worker:** copy nội dung [`cloudflare-proxy-worker.js`](./cloudflare-proxy-worker.js) vào Cloudflare Dashboard → **Workers & Pages → Create Worker** → dán → Deploy. Worker chỉ forward tới `hanaminikata.com`, nên không thành open proxy. Sau đó set `API_PROXY=https://xxx.your-subdomain.workers.dev`. Nếu Worker đặt secret `PROXY_KEY`, set thêm `API_PROXY_KEY` trên Render để gửi header `x-proxy-key`.
+- **SOCKS5/WARP userspace:** dùng [`scripts/warp-wireproxy.sh`](./scripts/warp-wireproxy.sh) hoặc [`scripts/render-start.sh`](./scripts/render-start.sh) rồi set `API_PROXY=socks5h://user:pass@host:1080`.
 
-- **Cloud Status**
-- **Mua nhanh** ASYNCTAS (UGPhone 49 xu / VSPhone VIP 15 xu)
-- **Mua UGPhone** qua Hanami (`Buy Device` / lệnh `reg`)
-
-**Render không cài được `warp-cli`** (cần `NET_ADMIN` + `/dev/net/tun`), nhưng **chạy được WARP userspace bằng `wireproxy` ngay trong Render** — xem mục **C** bên dưới (không cần VPS). Cloudflare Worker vẫn là phương án dự phòng.
-
-**A. Cloudflare Worker (khuyến nghị trên Render)**
-
-Copy nội dung file [`cloudflare-proxy-worker.js`](./cloudflare-proxy-worker.js) → Cloudflare Dashboard → **Workers & Pages → Create Worker** → dán → Deploy. Worker chỉ forward tới `meows.vn` và `hanaminikata.com`, nên không thành open proxy.
-
-Rồi dán URL Worker vào **Quản trị → Cookie → Proxy API**, hoặc set env:
-
-```text
-MEOWS_API_PROXY=https://xxx.your-subdomain.workers.dev
-```
-
-Nếu đặt secret `PROXY_KEY` trên Worker, set thêm `MEOWS_PROXY_KEY` trên Render để bot gửi header `x-proxy-key`.
-
-**B. WARP userspace bằng `wgcf` + `wireproxy` (không cần TUN/NET_ADMIN)**
-
-Cách này chạy được trên VPS thường, không cần `warp-cli`, không cần `/dev/net/tun`. Có sẵn script trong repo: [`scripts/warp-wireproxy.sh`](./scripts/warp-wireproxy.sh).
-
-```bash
-# Cài 2 binary (xem trang release):
-#   https://github.com/ViRb3/wgcf/releases
-#   https://github.com/pufferffish/wireproxy/releases
-wgcf register --accept-tos
-wgcf generate                       # ra wgcf-profile.conf ([Interface] + [Peer])
-
-# Tạo wireproxy.conf = nội dung file trên + đoạn [Socks5], rồi chạy:
-./scripts/warp-wireproxy.sh
-
-# Kiểm tra:
-curl -x socks5h://127.0.0.1:1080 https://meows.vn/api/cloud-status
-```
-
-Nếu expose ra ngoài cho Render kết nối:
-
-```bash
-WARP_SOCKS_BIND=0.0.0.0 \
-WARP_SOCKS_USER=proxyuser \
-WARP_SOCKS_PASS='pass-khong-co-dau-cach' \
-./scripts/warp-wireproxy.sh
-```
-
-Rồi set trên Render:
-
-```text
-MEOWS_API_PROXY=socks5h://proxyuser:pass-khong-co-dau-cach@IP_VPS:1080
-```
-
-VPS/script này **phải chạy 24/7** (dùng `systemd` hoặc Docker `restart: always`). WARP profile (`wgcf-profile.conf`) chứa private key → đã nằm trong `.gitignore`, không commit.
-
-Nếu vẫn dùng `warp-cli` (cần TUN) thì proxy mode mặc định là `127.0.0.1:40000`.
-
-**C. Chạy WARP thẳng trong Render (không VPS, không TUN)**
-
-Script: [`scripts/render-start.sh`](./scripts/render-start.sh). Nó tự tải `wireproxy`, dựng cấu hình từ profile, mở SOCKS5 `127.0.0.1:1080`, rồi mới chạy bot.
-
-1. Tạo profile **1 lần ở máy bạn**: `wgcf register --accept-tos && wgcf generate` → ra `wgcf-profile.conf`.
-2. Encode: `base64 -w0 wgcf-profile.conf` → dán làm secret Render `WGCF_PROFILE_B64`.
-3. Render → Service → Settings:
-   - **Build Command**: `npm install`
-   - **Start Command**: `bash scripts/render-start.sh`
-   - Env: `RENDER_WARP=1`, `WGCF_PROFILE_B64=<chuỗi base64>`
-
-Script sẽ **health check qua chính SOCKS5** trước khi bật proxy:
-
-- Tunnel OK → tự set `MEOWS_API_PROXY=socks5h://127.0.0.1:1080`, Cloud Status hiện `· warp`.
-- Không handshake được (Render chặn UDP ra cổng WireGuard) → tự bỏ proxy, bot chạy bình thường với chain cũ (Worker → direct → reader). **App không bao giờ treo vì WARP.**
-
-Muốn tự đăng ký WARP ngay trên Render (không cần secret) thì thêm `WGCF_AUTO_REGISTER=1` — nhưng mỗi deploy sẽ ra identity mới, không khuyến khích.
-
-**Cách ly**: `wireproxy` là userspace, **không sửa routing table**. Nên chỉ request nào dùng `SocksProxyAgent` mới đi WARP — ở đây là luồng mua nhanh (status + mua nhanh). Discord gateway, Supabase, web UI, gift code... vẫn đi IP Render bình thường. Hanami mặc định **không** đi WARP; bật nếu cần: `HANAMI_USE_PROXY=1`.
-
-Ưu tiên env: `MEOWS_API_PROXY` → `MEOWS_STATUS_PROXY` → ô trong DB → gọi trực tiếp.
-
-**Mua máy dùng chung chain với status**: `worker`/`warp` → `direct` (**không dùng `www`**, vì API mua chỉ có trên domain chính và `www` dễ trả 404). Chỉ retry khi bị Cloudflare chặn (403/Just a moment), Worker trả 404 (bản cũ/sai route) hoặc lỗi mạng; **không retry sau khi API đã trả response hợp lệ** để tránh mua trùng/trừ coin trùng. Reader proxy chỉ dùng cho GET (status), không dùng cho POST mua hàng. Thông báo lỗi sẽ kèm `[nguồn: ...]` và danh sách các nguồn đã thử.
-
-Ô thời gian trên **Cloud Status** hiện `worker` / `warp` / `www` / `proxy` tương ứng nguồn đang dùng.
+`wireproxy` là userspace, **không sửa routing table**; Discord gateway, web UI và các luồng khác vẫn đi IP gốc.
 
 ## Biến môi trường
 Xem `.env.example`. Các biến quan trọng: `DISCORD_TOKEN`, `ADMIN_DISCORD_ID`,
-`SUPABASE_URL`, `SUPABASE_KEY`, `RENDER_DOMAIN`, `GITHUB_TOKEN`, `HANAMI_TOKEN`, `LINK4M_API_KEY`, `LAYMA_TOKEN`, `BBMKTS_API_TOKEN` (hoặc alias `VUOTNHANH_API_TOKEN`), `MEOWS_API_PROXY` / `MEOWS_STATUS_PROXY` (tuỳ chọn, Worker hoặc SOCKS5/WARP), `MEOWS_PROXY_KEY` (tuỳ chọn, secret của Worker).
+`RENDER_DOMAIN`, `GITHUB_TOKEN`, `HANAMI_TOKEN`, `APIKEY` (edge function VMOS), `HANAMI_USE_PROXY`,
+`API_PROXY` / `API_PROXY_KEY` (tuỳ chọn), `LINK4M_API_KEY`, `LAYMA_TOKEN`, `BBMKTS_API_TOKEN`
+(hoặc alias `VUOTNHANH_API_TOKEN`).
 
 ## Bảo mật
 - Token GitHub/Hanami chỉ nằm ở server, không bao giờ gửi xuống trình duyệt.

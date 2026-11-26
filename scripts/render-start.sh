@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Chạy WARP userspace (wireproxy) ngay trong Render — KHÔNG cần VPS, KHÔNG cần TUN/NET_ADMIN.
 # wireproxy chỉ mở 1 SOCKS5 cục bộ; nó KHÔNG sửa routing table của máy.
-# => Chỉ các request có agent SOCKS5 (Meows) đi qua WARP. Discord/Supabase/Web UI không bị ảnh hưởng.
+# => Chỉ các request có agent SOCKS5 (Hanami khi bật HANAMI_USE_PROXY=1) đi qua WARP.
+#    Discord/Web UI và các luồng khác không bị ảnh hưởng.
 #
 # Setup trên Render:
 #   Build Command: npm install
@@ -17,7 +18,7 @@ PROFILE="${WGCF_PROFILE:-$PWD/wgcf-profile.conf}"
 CONF="${WIREPROXY_CONF:-$PWD/wireproxy.conf}"
 PORT="${WARP_SOCKS_PORT:-1080}"
 SOCKS_URL="socks5h://127.0.0.1:${PORT}"
-ORIGINAL_MEOWS_API_PROXY="${MEOWS_API_PROXY:-}"
+ORIGINAL_API_PROXY="${API_PROXY:-}"
 
 WIREPROXY_VER="v1.1.3"
 WGCF_VER="v2.3.1"
@@ -98,7 +99,7 @@ const proxy = process.argv[2];
 (async () => {
     for (let i = 0; i < 12; i++) {
         try {
-            const res = await fetch('https://meows.vn/api/cloud-status', {
+            const res = await fetch('https://hanaminikata.com/', {
                 agent: new SocksProxyAgent(proxy),
                 timeout: 5000,
                 headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
@@ -116,17 +117,17 @@ const proxy = process.argv[2];
 })();
 NODE
 then
-    export MEOWS_API_PROXY="$SOCKS_URL"
-    echo "[warp] Meows sẽ đi qua WARP. Nguồn trên Cloud Status: · warp"
+    export API_PROXY="$SOCKS_URL"
+    echo "[warp] Hanami sẽ đi qua WARP (khi HANAMI_USE_PROXY=1)."
 else
     kill "$WARP_LOOP_PID" 2>/dev/null || true
     pkill -x wireproxy 2>/dev/null || true
     # Trả lại proxy cũ (vd Worker) thay vì xoá sạch — nếu không Worker sẽ bị mất.
-    if [[ -n "$ORIGINAL_MEOWS_API_PROXY" ]]; then
-        export MEOWS_API_PROXY="$ORIGINAL_MEOWS_API_PROXY"
-        echo "[warp] Fallback về proxy có sẵn: ${ORIGINAL_MEOWS_API_PROXY%%\?*}"
+    if [[ -n "$ORIGINAL_API_PROXY" ]]; then
+        export API_PROXY="$ORIGINAL_API_PROXY"
+        echo "[warp] Fallback về proxy có sẵn: ${ORIGINAL_API_PROXY%%\?*}"
     else
-        unset MEOWS_API_PROXY
+        unset API_PROXY
         echo "[warp] Giữ chain mặc định."
     fi
 fi

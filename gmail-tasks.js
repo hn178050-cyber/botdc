@@ -2,7 +2,7 @@
  * Nhiệm vụ tạo Gmail — duyệt thủ công.
  *
  * Lưu chính trong bảng PostgreSQL `gmail_tasks`. Nếu bảng chưa được tạo trên
- * Supabase, module tự fallback sang bảng `kv` để web vẫn chạy; khi bảng có
+ * DB chính, module tự fallback sang bảng `kv` để web vẫn chạy; khi bảng có
  * sẵn, mọi bài gửi mới đi thẳng vào PostgreSQL.
  */
 const crypto = require('crypto');

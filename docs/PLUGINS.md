@@ -1,4 +1,4 @@
-# Plugin ASYNCTAS
+# Plugin NIGARIA CLOUD
 
 Plugin dùng để thêm route web, lệnh Discord và logic mới **mà không deploy lại bot/web**.
 
@@ -143,7 +143,7 @@ Không có `process`, `fs`, `child_process`, `http`, `net`, `os`, `express`, `di
 | `api.core.version` | Phiên bản API core (hiện tại `1.0.0`). |
 | `api.core.language` | `'JavaScript (CommonJS)'`. |
 | `api.core.now()` | ISO timestamp. |
-| `api.core.dbMode` | `'local'` hoặc `'supabase'`. |
+| `api.core.dbMode` | Luôn `'local'` (file JSON cục bộ). |
 | `api.core.env(name)` | Đọc biến môi trường **đã whitelist** (`PORT`, `RENDER_DOMAIN`, `DB_MODE`, `DISCORD_READY`, `GITHUB_READY`, ...). Không trả secret. |
 | `api.core.events()` | Danh sách event đang có subscriber. |
 | `api.core.pluginId` | ID plugin hiện tại. |
@@ -258,20 +258,8 @@ Key plugin được tự động prefix thành `plugin:<plugin-id>:<key>`.
 | API | Mô tả |
 |---|---|
 | `api.services.costs.reg` | Chi phí reg VMOS/VSPhone (10 xu). |
-| `api.services.costs.UG` / `.VS` | 49 xu / 15 xu. |
 | `api.services.regVmos()` / `.regVsphone()` | Tạo tài khoản cloud. |
 | `api.services.buyHanami(provider, server, input)` | Mua cloud Hanami. |
-| `api.services.cloud(force?)` | Cloud Status (cache 60s). |
-| `api.services.hasMeowsCookie()` | Đã cấu hình cookie chưa. |
-| `api.services.meows(provider, { confirm: true })` | **Mua thật, trừ xu.** Mặc định là dry-run, không gọi API mua. |
-
-```js
-// Dry-run — an toàn để test
-await api.services.meows('UG'); // { ok:false, dryRun:true, cost:49, ... }
-
-// Chỉ khi admin xác nhận mới mua thật
-await api.services.meows('UG', { confirm: true });
-```
 
 ### 4.11 Link / BXH / gift / daily
 
@@ -334,14 +322,11 @@ Timer tạo qua `setTimeout`/`setInterval` trong sandbox được engine theo d�
 | `web:giftcode` | `code`, `amount`, `userKey` |
 | `web:shop:purchase` | `purchaseId`, `userId`, `itemId`, `itemName`, `quantity`, `total`, `remaining` |
 | `web:device:reg` | `service`, `userKey`, `cost`, `newBalance` |
-| `web:device:meows` | `provider`, `userKey`, `cost`, `newBalance`, `source` |
 | `web:daily:claim` | `userKey`, `reward`, `newBalance`, `date` |
 | `web:device:vmos-free` | `userKey`, `linkCount`, `date` |
 | `web:link:start` | `userKey`, `provider`, `providerName`, `reward`, `dailyMax`, `sid`, `targetUrl`, `finalUrl` |
 | `web:admin:payout` | `by`, `result` |
 | `web:admin:background` | `url`, `by` |
-| `web:admin:cookie` | `by`, `configured`, `updatedAt` |
-| `web:admin:proxy` | `proxy`, `by` |
 | `web:plugin:installed` | `id`, `name`, `meta` |
 | `web:plugin:reloaded` | `id`, `name`, `meta` |
 | `web:plugin:source` | `id`, `name`, `sourceUrl`, `meta` |
@@ -368,11 +353,8 @@ Timer tạo qua `setTimeout`/`setInterval` trong sandbox được engine theo d�
 | `bot:giftcode` | `userId`, `code`, `amount`, `newBalance` |
 | `bot:transfer` | `from`, `to`, `amount`, `fee`, `received`, `newBalance` |
 | `bot:admin:background` | `url`, `by` |
-| `bot:admin:proxy` | `proxy`, `by` |
-| `bot:admin:cookie` | `by`, `configured` |
 | `bot:device:reg:panel` | `userId` |
 | `bot:device:reg` | `service`, `userId`, `cost` |
-| `bot:device:meows` | `userId`, `provider`, `cost`, `newBalance`, `source` |
 | `bot:plugin:command` | `pluginId`, `pluginName`, `commandName`, `userId` |
 | `bot:plugin:executed` | `pluginId`, `pluginName`, `commandName`, `userId` |
 | `bot:exchange` | `userId`, `from` (`coin`/`acoin`), `to` (`acoin`/`coin`), `amount`, `rate`, `acoinGain`/`coinGain`, `coinDelta`, `newCoin`, `newAcoin` |
@@ -395,7 +377,7 @@ Không có event nào nhận raw `interaction`, `req` hoặc token/cookie trong 
 - `fetch` trong sandbox không bị whitelist domain; plugin có thể gọi HTTP ngoài. Chỉ cài plugin từ nguồn tin cậy.
 - Route plugin là **public** nếu không tự kiểm tra `req.webUser` / `api.bot.isAdmin`.
 - Chỉ admin mới được cài/sửa/xoá plugin qua API `requireAdmin`.
-- Cookie dịch vụ mua nhanh, token Discord, PAT GitHub không được đưa vào event payload và không nên ghi log.
+- Token Discord và PAT GitHub không được đưa vào event payload và không nên ghi log.
 
 ---
 

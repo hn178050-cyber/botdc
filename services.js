@@ -4,23 +4,14 @@
 const crypto = require('crypto');
 const nodeFetch = require('node-fetch');
 const { SocksProxyAgent } = require('socks-proxy-agent');
-const db = require('./database');
-const github = require('./github');
 
 const HANAMI_URL = 'https://hanaminikata.com/dev/buy_device_cloud';
 const CLOUD_NAMES = { UG: 'UGPhone', VM: 'VMOS', VS: 'VSPhone' };
 const REG_COST = 10;
-
-// Dịch vụ mua nhanh qua Meows — cookie được admin lưu trong bảng kv
-const MEOWS_COOKIE_KEY = 'meows_cookie';
-const MEOWS_COSTS = { UG: 49, VSVIP: 15 };
-const MEOWS_NAMES = { UG: 'UGPhone', VSVIP: 'VSPhone VIP' };
 const DEVICE_LOGOS = {
-  UG: 'https://img.utdstc.com/icon/48f/fcd/48ffcdcfb167f38e517727e184da795d34418c94094af934298aacc64fceddb6:600',
   VS: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_g3u538-aiEWP_68-48toiD36I5eBqhVWVI6V0U0uww&s=10',
   VM: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnEz_zC4ZHJBI8GYKBKoLB4OArt8V9lVet6fX5Ndv83w&s=10',
 };
-const MEOWS_UA = 'Mozilla/5.0 (Linux; Android 10; S28 Ultra Build/QP1A.190711.020) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.8103.52 Mobile Safari/537.36';
 
 function vsphoneReady() {
     return !!(process.env.VSPHONE_API_URL && process.env.VSPHONE_API_KEY);
@@ -34,7 +25,7 @@ async function buyHanami(cloudId, server, inputData) {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
         body: JSON.stringify(body),
         timeout: 60000,
-    }, { includeWww: false, useProxy: process.env.HANAMI_USE_PROXY === '1' });
+    }, { useProxy: process.env.HANAMI_USE_PROXY === '1' });
     const raw = result.raw;
     let data;
     try {
@@ -82,72 +73,6 @@ async function regVsphoneAccount() {
     return { ...account, copyText: accountCopyText(account) };
 }
 
-// ==================== MEOWS (UGPhone / VSPhone VIP) ====================
-
-/** Chấp nhận token thường, `.COOKIESECURITY=...` hoặc cả header Cookie đầy đủ. */
-function normalizeMeowsCookie(value) {
-    let raw = String(value || '').trim().replace(/^Cookie\s*:\s*/i, '');
-    if (!raw) return '';
-    const match = /(?:^|;\s*)\.COOKIESECURITY\s*=\s*([^;]+)/i.exec(raw);
-    const token = match
-        ? match[1].trim()
-        : raw.replace(/^\.COOKIESECURITY\s*=\s*/i, '').trim();
-    return token ? `.COOKIESECURITY=${token}` : '';
-}
-
-async function getMeowsCookie() {
-    return String((await db.getKv(MEOWS_COOKIE_KEY)) || '').trim();
-}
-
-function extractMeowsInfo(node, depth = 0) {
-    if (!node || depth > 6) return null;
-    if (Array.isArray(node)) {
-        for (const item of node) {
-            const found = extractMeowsInfo(item, depth + 1);
-            if (found) return found;
-        }
-        return null;
-    }
-    if (typeof node !== 'object') return null;
-
-    const pick = (keys) => {
-        for (const key of keys) {
-            const value = node[key];
-            if (value !== undefined && value !== null && value !== '') return value;
-        }
-        return null;
-    };
-
-    const account = pick(['account', 'email', 'username', 'user', 'login', 'phone', 'taiKhoan', 'tenTaiKhoan']);
-    const password = pick(['password', 'pass', 'pwd', 'matKhau']);
-    const token = pick(['token', 'Token', 'accessToken', 'access_token', 'authToken', 'auth_token']);
-    const userId = pick(['userid', 'userID', 'userId', 'user_id', 'uid', 'id', 'deviceId']);
-    let copyText = pick(['copyText', 'copy', 'text']);
-
-    const content = pick(['content', 'data', 'result', 'info', 'device']);
-    if (!copyText && typeof content === 'string' && content.includes('|')) copyText = content;
-    if (!copyText && account && password) copyText = `${account}|${password}`;
-
-    let found = null;
-    for (const nested of [content, node.data, node.result, node.info, node.device, node.response]) {
-        // API có khi trả data/result dưới dạng chuỗi JSON (vd. full response Fast-buy).
-        const parsedString = typeof nested === 'string' ? parseLooseJson(nested) : null;
-        const child = parsedString && typeof parsedString === 'object' ? parsedString : nested;
-        if (child && typeof child === 'object') {
-            found = extractMeowsInfo(child, depth + 1);
-            if (found) break;
-        }
-    }
-
-    return {
-        account: account || (found && found.account) || null,
-        password: password || (found && found.password) || null,
-        token: token || (found && found.token) || null,
-        userId: userId || (found && found.userId) || null,
-        copyText: copyText || (found && found.copyText) || null,
-    };
-}
-
 /** JSON có thể nằm trong markdown/backtick hoặc bị bọc bởi text ("Nội dung chính: {...}"). */
 function parseLooseJson(value) {
     if (typeof value !== 'string') return value;
@@ -159,164 +84,6 @@ function parseLooseJson(value) {
         try { return JSON.parse(text.slice(start, end + 1)); } catch (e) { /* không phải JSON */ }
     }
     return null;
-}
-
-const UG_CONTENT_KEY = /^(?:nội\s*dung\s*chính|noi\s*dung\s*chinh|content|contents|data|result|info|device|payload|storage|local-?storage|ugphone)/i;
-
-function looksLikeUgPhone(obj) {
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
-    return Object.keys(obj).some(key => /^(?:UGPHONE-|ugPhone|ugBrowserId|hadAgreePolicy)/i.test(key));
-}
-
-/** Tìm object Local Storage UGPhone thật, bỏ các field tracking/_gcl_ls/fbapc_* của Meows. */
-function parseUgPhonePayload(node, depth = 0) {
-    if (depth > 6 || node === null || node === undefined) return null;
-    const parsed = parseLooseJson(node);
-    if (parsed && parsed !== node && parsed && typeof parsed === 'object') {
-        return parseUgPhonePayload(parsed, depth + 1);
-    }
-    if (Array.isArray(node)) {
-        for (const item of node) {
-            const found = parseUgPhonePayload(item, depth + 1);
-            if (found) return found;
-        }
-        return null;
-    }
-    if (typeof node !== 'object') return null;
-    if (looksLikeUgPhone(node)) return node;
-    for (const [key, value] of Object.entries(node)) {
-        if (UG_CONTENT_KEY.test(key.replace(/[_-]+/g, ' ').trim())) {
-            const found = parseUgPhonePayload(value, depth + 1);
-            if (found) return found;
-        }
-    }
-    for (const value of Object.values(node)) {
-        if (value && typeof value === 'object') {
-            const found = parseUgPhonePayload(value, depth + 1);
-            if (found) return found;
-        }
-    }
-    return null;
-}
-
-/** Tách field cần dùng từ Local Storage UGPhone để FE/Bot hiển thị gọn. */
-function ugPhoneInfo(payload) {
-    const pick = (keys, source) => {
-        for (const key of keys) {
-            const value = source && source[key];
-            if (value !== undefined && value !== null && value !== '') return value;
-        }
-        return null;
-    };
-    const mqtt = parseLooseJson(payload['UGPHONE-MQTT'] || payload.ugPhoneMqtt) || {};
-    const id = pick(['UGPHONE-ID', 'UGPHONE-Id', 'ugPhoneId', 'userId'], payload);
-    const token = pick(['UGPHONE-Token', 'ugPhoneToken', 'accessToken'], payload);
-    const browserId = pick(['ugBrowserId', 'UGPHONE-browserId', 'UGPHONE-BrowserId'], payload);
-    const publicKey = pick(['UGPHONE-PUBLICKEY', 'UGPHONE-publicKey'], payload) || pick(['public_key'], mqtt);
-    const fields = [
-        { key: 'UGPHONE-ID', label: 'UGPHONE-ID', value: String(id || '') },
-        { key: 'UGPHONE-Token', label: 'UGPHONE-Token', value: String(token || '') },
-        { key: 'ugBrowserId', label: 'ugBrowserId', value: String(browserId || '') },
-    ];
-    for (const key of [
-        'client_id', 'login_id', 'access_key', 'access_secret',
-        'mqtt_url', 'mqtt_ssl_url', 'mqtt_ws_url', 'mqtt_wss_url',
-        'mqtt_topic', 'mqtt_username', 'mqtt_password', 'ws_url',
-    ]) {
-        const value = mqtt[key];
-        if (value !== undefined && value !== null && value !== '') {
-            fields.push({ key: `UGPHONE-MQTT.${key}`, label: `MQTT ${key}`, value: String(value) });
-        }
-    }
-    if (publicKey) {
-        fields.push({ key: 'UGPHONE-PUBLICKEY', label: 'UGPHONE-PUBLICKEY', value: String(publicKey), long: true });
-    }
-    // Bỏ field tracking (_gcl_ls, fbapc_*) của Meows, giữ đủ key UGPhone cần import.
-    const clean = {};
-    for (const [key, value] of Object.entries(payload)) {
-        if (/^_/.test(key) || /^fbapc_/i.test(key)) continue;
-        clean[key] = value;
-    }
-    return {
-        id: id ? String(id) : null,
-        token: token ? String(token) : null,
-        browserId: browserId ? String(browserId) : null,
-        publicKey: publicKey ? String(publicKey) : null,
-        fields,
-        copyText: JSON.stringify(clean, null, 2),
-    };
-}
-
-/** Sinh script nạp localStorage UGPhone: gist thật + base64 thật + link social từ cấu hình. */
-async function buildUgInjectSnippet(ug) {
-    const readSocial = async (key, envKey, fallback) => {
-        try { return (await db.getKv(key)) || process.env[envKey] || fallback; }
-        catch (e) { return process.env[envKey] || fallback; }
-    };
-    const [youtubeUrl, discordUrl] = await Promise.all([
-        readSocial('youtube_url', 'YOUTUBE_URL', 'https://youtube.com'),
-        readSocial('discord_url', 'DISCORD_URL', 'https://discord.com'),
-    ]);
-    const dataJson = (ug.copyText && String(ug.copyText).trim()) ? ug.copyText : '{}';
-    const content = [
-        `const data = ${dataJson};`,
-        '',
-        '// Xóa toàn bộ localStorage hiện tại',
-        'localStorage.clear();',
-        '',
-        '// Set dữ liệu mới',
-        'for (const key in data) {',
-        '  if (Object.prototype.hasOwnProperty.call(data, key)) {',
-        '    localStorage.setItem(key, data[key]);',
-        '  }',
-        '}',
-        '',
-        'console.log(',
-        '  `%c🤑 Đã xóa và nhập localStorage! 🌸 \\n%cBây giờ bạn chỉ cần reload trang Ugphone Cloud là xong!\\n\\n%cYouTube: ' + youtubeUrl + '\\nDiscord: ' + discordUrl + '`,',
-        "  'color: #4c00ffff; font-size: 16px; font-weight: bold;',",
-        "  'color: #ff8c00; font-size: 15px; font-weight: bold;',",
-        "  'color: #ffffff; font-size: 10px;'",
-        ');',
-    ].join('\n');
-
-    // Mỗi lần mua tạo 1 gist secret mới chứa đúng script của lần đó.
-    const filename = `asynctas-ugphone-${crypto.randomBytes(6).toString('hex')}.js`;
-    let rawUrl = null;
-    let error = null;
-    try {
-        const gist = await github.createGist(filename, content, 'ASYNCTAS UGPhone localStorage import');
-        const gistFile = gist.filename || filename;
-        rawUrl = `${String(gist.url || '').replace('https://gist.github.com/', 'https://gist.githubusercontent.com/').replace(/\/$/, '')}/raw/${gistFile}`;
-    } catch (e) {
-        error = e.message;
-        // Thử lại lần 2 với tên file/description đơn giản (GitHub đôi khi trả 422 Validation Failed).
-        try {
-            const gist = await github.createGist('asynctas-ugphone.js', content, 'ASYNCTAS UGPhone');
-            rawUrl = `${String(gist.url || '').replace('https://gist.github.com/', 'https://gist.githubusercontent.com/').replace(/\/$/, '')}/raw/${gist.filename || 'asynctas-ugphone.js'}`;
-            error = null;
-        } catch (e2) {
-            error = `${error} | retry: ${e2.message}`;
-        }
-    }
-
-    if (rawUrl) {
-        return {
-            snippet: `fetch(atob('${Buffer.from(rawUrl).toString('base64')}')).then(r => r.text()).then(eval);`,
-            rawUrl,
-            youtubeUrl,
-            discordUrl,
-        };
-    }
-
-    // Vẫn trả script để có nút Copy ngay cả khi GitHub đang lỗi.
-    return {
-        snippet: `eval(atob('${Buffer.from(content).toString('base64')}'));`,
-        rawUrl: null,
-        error,
-        fallback: true,
-        youtubeUrl,
-        discordUrl,
-    };
 }
 
 /** Nhận chuỗi đã copy: email|mật khẩu|token:...|userid:... */
@@ -385,265 +152,8 @@ function accountCopyText(info = {}) {
     return parts.join('|');
 }
 
-/** Tạo share link VSPhone qua Meows, trả đủ field của tài khoản + response getss-uid. */
-async function getVsphoneShareLink(rawInput) {
-    const input = parseVsphoneFastResponse(rawInput);
-    if (!input) {
-        return { ok: false, message: 'Dán đúng full response VSPhone Fast (cần email/password/token/userid).' };
-    }
-    const cookie = await getMeowsCookie();
-    if (!cookie) return { ok: false, message: 'Admin chưa lưu cookie dịch vụ nhanh (Quản trị → Cookie).' };
-
-    const result = await requestWithFallback('https://meows.vn/api/vsphone/getss-uid', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Origin: 'https://meows.vn',
-            Referer: 'https://meows.vn/client/cloud-manager',
-            'User-Agent': MEOWS_UA,
-            Cookie: cookie,
-        },
-        body: JSON.stringify({
-            token: input.token,
-            user_id: input.userId,
-            email: input.email,
-            pass: input.password,
-            cloud: 'vsphone',
-        }),
-        signal: AbortSignal.timeout(60000),
-        timeout: 60000,
-    }, { includeWww: false });
-
-    const response = { ok: result.ok, status: result.status };
-    let data = null;
-    try { data = JSON.parse(result.raw); } catch (e) { /* giữ raw để báo lỗi */ }
-    const error = meowsApiError(response, data, result.raw);
-    if (error) {
-        const detail = result.raw ? ` (body: ${result.raw.replace(/\s+/g, ' ').slice(0, 200)})` : '';
-        return { ok: false, message: `${error}${detail}`, source: result.source };
-    }
-
-    const share = data || {};
-    const pad = share.pad || {};
-    const fields = [
-        field('orderId', input.orderId),
-        field('email', input.email),
-        field('password', input.password),
-        field('token', input.token),
-        field('userid', input.userId),
-    ];
-    input.devices.forEach((device, index) => {
-        const prefix = input.devices.length > 1 ? `device${index + 1}.` : 'device.';
-        for (const key of [
-            'equipmentId', 'padCode', 'configName', 'countryCode', 'padName',
-            'expireTime', 'androidVersion', 'status', 'signExpirationTime',
-        ]) {
-            if (device[key] !== undefined && device[key] !== null && device[key] !== '') {
-                fields.push(field(`${prefix}${key}`, device[key]));
-            }
-        }
-    });
-    fields.push(field('shareToken', share.shareToken));
-    if (share.shareToken) {
-        fields.push(field('shareUrl', `https://cloud.vsphone.com/screen/share/${share.shareToken}`));
-    }
-    for (const key of ['padCode', 'equipmentId', 'configName', 'countryCode', 'padName', 'expireTime']) {
-        if (pad[key] !== undefined && pad[key] !== null && pad[key] !== '') {
-            fields.push(field(`pad.${key}`, pad[key]));
-        }
-    }
-
-    return {
-        ok: true,
-        source: result.source,
-        account: input.email,
-        password: input.password,
-        token: input.token,
-        userId: input.userId,
-        orderId: input.orderId,
-        shareToken: share.shareToken || null,
-        shareUrl: share.shareToken ? `https://cloud.vsphone.com/screen/share/${share.shareToken}` : null,
-        pad,
-        fields,
-        copyText: fields.map(f => `${f.label}: ${f.value}`).join('\n'),
-        rawResponse: result.raw,
-        data: share,
-        message: share.message || 'Lấy link thành công',
-    };
-}
-
-function meowsApiError(response, data, raw) {
-    if (!response.ok) return `API trả HTTP ${response.status}`;
-    if (data && (data.success === false || data.ok === false)) {
-        return data.message || data.msg || data.error || 'API báo lỗi';
-    }
-    if (data && data.error && typeof data.error !== 'number' && String(data.error) !== '0') {
-        return String(data.error);
-    }
-    const code = data && (data.code !== undefined ? data.code : data.status);
-    const okCodes = [0, 1, 200, '0', '1', '200', 'success', 'ok', 'true'];
-    if (code !== undefined && !okCodes.includes(String(code).toLowerCase())) {
-        return data.message || data.msg || `API trả mã ${code}`;
-    }
-    if (!data && /^\s*</.test(raw)) return 'API trả về HTML thay vì JSON (cookie có thể hết hạn)';
-    return null;
-}
-
-/** Mua device qua Meows. Trả { account, password, token, userId, copyText, details, message }. */
-async function buyMeows(provider) {
-    const key = String(provider || '').toUpperCase();
-    const config = key === 'UG'
-        ? {
-            url: 'https://meows.vn/api/ugphone/redeem/buy',
-            referer: 'https://meows.vn/client/ugphone-trial',
-            body: {},
-        }
-        : key === 'VSVIP'
-            ? {
-                url: 'https://meows.vn/api/vsphone/fast-buy',
-                referer: 'https://meows.vn/client/cloud-manager',
-                body: { sourceId: 'vsphone_fast' },
-            }
-            : null;
-    if (!config) throw new Error('Provider không hợp lệ.');
-
-    const cookie = await getMeowsCookie();
-    if (!cookie) throw new Error('Admin chưa lưu cookie dịch vụ nhanh (Quản trị → Cookie).');
-
-    const result = await requestWithFallback(config.url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Origin: 'https://meows.vn',
-            Referer: config.referer,
-            'User-Agent': MEOWS_UA,
-            Cookie: cookie,
-        },
-        body: JSON.stringify(config.body),
-        signal: AbortSignal.timeout(60000),
-        timeout: 60000,
-    }, { includeWww: false });
-    const response = { ok: result.ok, status: result.status };
-    const raw = result.raw;
-    let data = null;
-    try { data = JSON.parse(raw); } catch (e) { /* giữ raw để báo lỗi */ }
-
-    const error = meowsApiError(response, data, raw);
-    if (error) {
-        const detail = raw ? ` (body: ${raw.replace(/\s+/g, ' ').slice(0, 200)})` : '';
-        const chain = result.failures && result.failures.length ? ` · đã thử: ${result.failures.join('; ')}` : '';
-        throw new Error(`${error}${detail} [nguồn: ${result.source}]${chain}`);
-    }
-
-    // VSPhone Fast trả full response có token/userid — parse riêng để không mất 2 field này.
-    if (key === 'VSVIP') {
-        const vsp = parseVsphoneFastResponse(data || raw);
-        if (vsp) {
-            const fields = [
-                field('email', vsp.email),
-                field('password', vsp.password),
-                field('token', vsp.token),
-                field('userid', vsp.userId),
-            ];
-            if (vsp.orderId) fields.unshift(field('orderId', vsp.orderId));
-            return {
-                ok: true,
-                kind: 'vsphone-vip',
-                account: vsp.email,
-                password: vsp.password,
-                token: vsp.token,
-                userId: vsp.userId,
-                orderId: vsp.orderId,
-                copyText: accountCopyText(vsp),
-                fields,
-                details: data || raw,
-                message: (data && (data.message || data.msg)) || 'Mua thành công',
-                source: result.source,
-            };
-        }
-    }
-
-    // UGPhone trả Local Storage trong "Nội dung chính" — tách riêng, không đổ cả raw JSON.
-    if (key === 'UG') {
-        const payload = parseUgPhonePayload(data || raw);
-        const ug = payload ? ugPhoneInfo(payload) : null;
-        // Dù API đổi format vẫn trả kind=ugphone + script để FE luôn có nút Copy.
-        const copyText = ug
-            ? ug.copyText
-            : (data ? JSON.stringify(data, null, 2) : String(raw || ''));
-        const inject = await buildUgInjectSnippet({ copyText });
-        return {
-            ok: true,
-            kind: 'ugphone',
-            account: ug ? ug.id : null,
-            password: ug ? ug.token : null,
-            token: ug ? ug.token : null,
-            userId: ug ? ug.id : null,
-            copyText,
-            fields: ug ? ug.fields : [],
-            injectSnippet: inject.snippet,
-            injectRawUrl: inject.rawUrl || null,
-            injectError: inject.error || (payload ? null : 'Không tách được Local Storage UGPhone từ response'),
-            injectFallback: !!inject.fallback,
-            youtubeUrl: inject.youtubeUrl,
-            discordUrl: inject.discordUrl,
-            details: payload || data || raw,
-            message: (data && (data.message || data.msg)) || 'Mua thành công',
-            source: result.source,
-        };
-    }
-
-    const info = extractMeowsInfo(data) || {};
-    const rawText = data ? JSON.stringify(data) : raw;
-    const hasAccount = info.account !== null || info.password !== null;
-    return {
-        ok: true,
-        account: info.account,
-        password: info.password,
-        token: info.token,
-        userId: info.userId,
-        copyText: hasAccount ? accountCopyText(info) : (info.copyText || rawText),
-        details: data || raw,
-        message: (data && (data.message || data.msg)) || 'Mua thành công',
-        source: result.source,
-    };
-}
-
-// ==================== CLOUDPHONE STATUS (public) ====================
-const CLOUD_STATUS_TTL_MS = 60 * 1000;
-let cloudStatusCache = null;
-let cloudStatusPromise = null;
-
-function normalizeMeowsDevice(entry) {
-    const raw = String((entry && entry.status) || '').toLowerCase();
-    const online = ['online', 'available', 'active', 'ready', 'ok', 'instock', 'in_stock', 'true'].includes(raw);
-    return {
-        status: online ? 'online' : 'offline',
-        message: String((entry && entry.message) || ''),
-        lastBuyAt: Number((entry && entry.lastBuyAt) || 0) || null,
-    };
-}
-
-function parseMeowsStatus(raw) {
-    const text = String(raw || '').trim();
-    try { return JSON.parse(text); } catch (e) { /* thử các dạng khác */ }
-    const marker = text.indexOf('Markdown Content:');
-    if (marker >= 0) {
-        const part = text.slice(marker + 'Markdown Content:'.length).trim();
-        try { return JSON.parse(part); } catch (e) { /* cắt giữa {} */ }
-        const start = part.indexOf('{');
-        const end = part.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            try { return JSON.parse(part.slice(start, end + 1)); } catch (e) { /* bỏ qua */ }
-        }
-    }
-    return null;
-}
-
 /** Chấp nhận `socks5h://host:port`, `socks5://host:port` hoặc chỉ `host:port` (WARP mặc định 127.0.0.1:40000). */
-function normalizeStatusProxy(value) {
+function normalizeProxy(value) {
     let raw = String(value || '').trim();
     if (!raw) return '';
     if (/^https?:\/\//i.test(raw) || /^socks/i.test(raw)) return raw;
@@ -651,23 +161,15 @@ function normalizeStatusProxy(value) {
 }
 
 function proxyKeyHeaders() {
-    const key = String(process.env.MEOWS_PROXY_KEY || '').trim();
+    const key = String(process.env.API_PROXY_KEY || '').trim();
     return key ? { 'x-proxy-key': key } : {};
 }
 
 async function getProxyUrl() {
-    const fromEnv = normalizeStatusProxy(process.env.MEOWS_API_PROXY || process.env.MEOWS_STATUS_PROXY);
-    if (fromEnv) return fromEnv;
-    try {
-        return normalizeStatusProxy(await db.getKv('meows_status_proxy'));
-    } catch (e) {
-        return '';
-    }
+    return normalizeProxy(process.env.API_PROXY || '');
 }
 
-/** Cùng thứ tự nguồn với Cloud Status. `www` chỉ dùng cho GET/status (API mua không có trên www). */
-async function getRequestSources({ includeReader = false, includeWww = true, useProxy = true } = {}) {
-    // useProxy=false dùng cho dịch vụ không phải Meows (vd Hanami) — WARP chỉ áp dụng cho Meows.
+async function getRequestSources({ useProxy = true } = {}) {
     const proxyUrl = useProxy ? await getProxyUrl() : '';
     const sources = [];
     if (proxyUrl) {
@@ -676,7 +178,7 @@ async function getRequestSources({ includeReader = false, includeWww = true, use
         } else {
             sources.push({ name: 'warp', kind: 'socks', proxyUrl });
             // Nếu người dùng dán nhầm "host:port" của HTTP proxy (không có http://),
-            // normalizeStatusProxy sẽ ra socks5h://... → thử thêm dạng http:// cùng địa chỉ.
+            // normalizeProxy sẽ ra socks5h://... → thử thêm dạng http:// cùng địa chỉ.
             try {
                 const httpUrl = new URL(proxyUrl.replace(/^socks5h?:\/\//i, 'http://'));
                 httpUrl.username = '';
@@ -686,8 +188,6 @@ async function getRequestSources({ includeReader = false, includeWww = true, use
         }
     }
     sources.push({ name: 'direct', kind: 'direct' });
-    if (includeWww) sources.push({ name: 'www', kind: 'www' });
-    if (includeReader) sources.push({ name: 'proxy', kind: 'reader' });
     return sources;
 }
 
@@ -706,12 +206,6 @@ async function requestFromSource(source, targetUrl, options) {
         u.searchParams.set('url', targetUrl);
         url = u.toString();
         Object.assign(headers, proxyKeyHeaders());
-    } else if (source.kind === 'www') {
-        url = targetUrl.replace('https://meows.vn', 'https://www.meows.vn');
-    } else if (source.kind === 'reader') {
-        url = `https://r.jina.ai/${targetUrl}`;
-        delete headers.Cookie;
-        delete headers.cookie;
     } else if (source.kind === 'socks') {
         const nodeOptions = { ...options, headers };
         delete nodeOptions.signal; // node-fetch v2 dùng timeout thay vì AbortSignal.timeout
@@ -725,12 +219,8 @@ async function requestFromSource(source, targetUrl, options) {
     return fetch(url, { ...options, headers, redirect: 'manual' });
 }
 
-/**
- * Gọi API theo chain của status. Chỉ retry khi bị chặn (403/Cloudflare) hoặc lỗi mạng.
- * Với mua hàng KHÔNG retry sau khi API đã trả response, để tránh mua trùng/trừ coin trùng.
- */
-async function requestWithFallback(targetUrl, options = {}, { includeReader = false, includeWww = true, useProxy = true, parse = null } = {}) {
-    const sources = await getRequestSources({ includeReader, includeWww, useProxy });
+async function requestWithFallback(targetUrl, options = {}, { useProxy = true, parse = null } = {}) {
+    const sources = await getRequestSources({ useProxy });
     const failures = [];
 
     for (const source of sources) {
@@ -758,126 +248,18 @@ async function requestWithFallback(targetUrl, options = {}, { includeReader = fa
     throw new Error(failures.join(' · ') || 'Không gọi được API');
 }
 
-/** Trạng thái cloudphone từ Meows. Cache 60s để tránh spam API. */
-async function getCloudStatus({ force = false } = {}) {
-    const now = Date.now();
-    if (!force && cloudStatusCache && now - cloudStatusCache.at < CLOUD_STATUS_TTL_MS) {
-        return cloudStatusCache.value;
-    }
-    if (cloudStatusPromise) return cloudStatusPromise;
-
-    cloudStatusPromise = (async () => {
-        let result = null;
-        let lastError = null;
-        try {
-            result = await requestWithFallback('https://meows.vn/api/cloud-status', {
-                headers: {
-                    Accept: 'application/json',
-                    Origin: 'https://meows.vn',
-                    Referer: 'https://meows.vn/client/cloud-manager',
-                    'User-Agent': MEOWS_UA,
-                },
-                signal: AbortSignal.timeout(15000),
-                timeout: 15000,
-            }, { includeReader: true, parse: parseMeowsStatus });
-        } catch (e) {
-            lastError = e;
-        }
-
-        const errors = [];
-        let meows;
-        let source = null;
-        if (result && result.ok && result.parsed) {
-            const data = result.parsed;
-            source = result.source;
-            meows = {
-                vmos: normalizeMeowsDevice(data.vmos),
-                vsphone: normalizeMeowsDevice(data.vsphone),
-                ts: Number(data.ts) || null,
-            };
-        } else {
-            const reason = lastError
-                ? lastError.message
-                : (result && result.parsed && (result.parsed.message || result.parsed.error)) || 'API không trả dữ liệu';
-            errors.push(`ASYNCTAS: ${reason}`);
-            meows = {
-                vmos: { status: 'offline', message: reason, lastBuyAt: null },
-                vsphone: { status: 'offline', message: reason, lastBuyAt: null },
-                ts: null,
-            };
-        }
-
-        const value = {
-            checkedAt: new Date().toISOString(),
-            source,
-            sourceTs: meows.ts,
-            vmos: meows.vmos,
-            vsphone: meows.vsphone,
-            errors,
-        };
-        cloudStatusCache = { at: Date.now(), value };
-        return value;
-    })();
-
-    try {
-        return await cloudStatusPromise;
-    } finally {
-        cloudStatusPromise = null;
-    }
-}
-
 module.exports = {
     HANAMI_URL,
     CLOUD_NAMES,
     REG_COST,
-    MEOWS_COOKIE_KEY,
-    MEOWS_COSTS,
-    MEOWS_NAMES,
     DEVICE_LOGOS,
     vsphoneReady,
     buyHanami,
     regVmosAccount,
     regVsphoneAccount,
-    normalizeMeowsCookie,
-    getMeowsCookie,
     parseLooseJson,
-    parseUgPhonePayload,
-    ugPhoneInfo,
-    buyMeows,
     parseVsphoneFastResponse,
     parseVsphonePipe,
     accountCopyText,
-    buildUgInjectSnippet,
-    extractMeowsInfo,
-    getVsphoneShareLink,
-    normalizeStatusProxy,
-    getCloudStatus,
-    probeMeowsPost,
 };
 
-/** Test POST qua đúng chain đang dùng, tới endpoint KHÔNG mua máy. Trả về status/nguồn để biết 403 ở đâu. */
-async function probeMeowsPost() {
-    const cookie = await getMeowsCookie();
-    const result = await requestWithFallback('https://meows.vn/api/cloud-status', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Origin: 'https://meows.vn',
-            Referer: 'https://meows.vn/client/cloud-manager',
-            'User-Agent': MEOWS_UA,
-            ...(cookie ? { Cookie: cookie } : {}),
-        },
-        body: '{}',
-        signal: AbortSignal.timeout(15000),
-        timeout: 15000,
-    }, { includeWww: false });
-    return {
-        ok: result.ok,
-        status: result.status,
-        source: result.source,
-        failures: result.failures,
-        body: String(result.raw || '').replace(/\s+/g, ' ').slice(0, 200),
-        cookieSet: !!cookie,
-    };
-}

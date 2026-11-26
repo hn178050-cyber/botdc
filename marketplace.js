@@ -1126,7 +1126,7 @@ router.post('/api/admin/complaints/:id/decision', requireAdmin, ah(async (req, r
 // ==================== BẢO TRÌ ====================
 /**
  * - Seller inactive >30 ngày -> suspended.
- * - Web account inactive >180 ngày -> xoá an toàn (local + Supabase).
+ * - Web account inactive >180 ngày -> xoá an toàn (local).
  * - Giải ngân đơn đã quá hạn giữ 3 ngày và không có khiếu nại.
  */
 async function runMaintenance() {

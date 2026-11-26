@@ -26,7 +26,7 @@ async function createStock(name, accountsText) {
     if (!lines.length) throw new Error('Danh sách tài khoản trống.');
     if (useGist()) {
         const filename = github.safeFilename(name);
-        const gist = await github.createGist(filename, lines.join('\n'), `ASYNCTAS • ${name}`);
+        const gist = await github.createGist(filename, lines.join('\n'), `NIGARIA CLOUD • ${name}`);
         return { gist_id: gist.id, gist_filename: gist.filename, stock: lines.length, stock_content: null };
     }
     return { gist_id: LOCAL_GIST, gist_filename: null, stock: lines.length, stock_content: lines.join('\n') };

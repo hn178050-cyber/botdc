@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # WARP userspace (không cần TUN/NET_ADMIN): wgcf -> wireproxy -> SOCKS5.
-# Dùng trên VPS/Máy chạy liên tục, rồi dán socks5h://host:port vào MEOWS_API_PROXY.
+# Dùng trên VPS/Máy chạy liên tục, rồi dán socks5h://host:port vào API_PROXY (dùng cho Hanami).
 set -euo pipefail
 
 PROFILE="${WGCF_PROFILE:-wgcf-profile.conf}"

@@ -20,7 +20,7 @@ try {
 } catch (e) {
     console.warn('[marketplace] module chưa sẵn sàng:', e.message);
 }
-const { HANAMI_URL, CLOUD_NAMES, REG_COST, MEOWS_COSTS, MEOWS_NAMES, vsphoneReady, buyHanami, regVmosAccount, regVsphoneAccount } = services;
+const { HANAMI_URL, CLOUD_NAMES, REG_COST, vsphoneReady, buyHanami, regVmosAccount, regVsphoneAccount } = services;
 const PAY_MIN = 10;          // số xu tối thiểu mỗi lần /pay
 const PAY_FEE_RATE = 0.05;   // phí chuyển 5%
 const LEADERBOARD_INTERVAL_MS = 10 * 60 * 1000; // cập nhật bảng xếp hạng mỗi 10 phút
@@ -114,19 +114,6 @@ async function ensureWebUserForDiscord(userId, discordUser) {
     return user;
 }
 
-function maskProxy(value) {
-    const raw = String(value || '').trim();
-    if (!raw) return '(chưa đặt)';
-    return raw.replace(/\/\/([^:@/]+):([^@/]+)@/, '//$1:***@');
-}
-
-function deviceStatusLine(label, device) {
-    const ok = device && device.status === 'online';
-    const icon = ok ? '🟢' : '🔴';
-    const msg = device && device.message ? String(device.message).slice(0, 120) : '';
-    return `${icon} **${label}**: ${ok ? 'Online' : 'Offline'}${msg ? ` — ${msg}` : ''}`;
-}
-
 // heartbeat watchdog: nếu bot im lặng quá 2 phút -> relogin
 const HEARTBEAT_TIMEOUT = 2 * 60 * 1000;
 let _heartbeatTimer = null;
@@ -173,7 +160,7 @@ async function todayFreeLinkCount(userId, today) {
 // PHẦN 1: WEB SERVER (NHẬN XU)
 // ==========================================
 const REDEEM_ASSET_VERSION = '20261124r';
-const BROWSER_COOKIE = 'asynctas_browser';
+const BROWSER_COOKIE = 'nigaria_browser';
 
 function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -223,7 +210,7 @@ function renderRedeemError(res, msg, { theme = 'bubble', webUrl = 'https://async
     return res.status(403).send(`<!DOCTYPE html>
 <html lang="vi" data-theme="${safeTheme}"><head><meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="stylesheet" href="/styles.css?v=${REDEEM_ASSET_VERSION}" /><title>ASYNCTAS — Lỗi</title></head>
+<link rel="stylesheet" href="/styles.css?v=${REDEEM_ASSET_VERSION}" /><title>NIGARIA CLOUD — Lỗi</title></head>
 <body><div class="redeem-page"><div class="card redeem-card">
   <div class="redeem-icon">!</div>
   <div class="redeem-title">LỖI TRUY CẬP</div>
@@ -265,10 +252,10 @@ app.get('/redeem', async (req, res) => {
         res.send(`<!DOCTYPE html>
 <html lang="vi" data-theme="${theme}"><head><meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ASYNCTAS — Vượt link</title>
+<title>NIGARIA CLOUD — Vượt link</title>
 <link rel="icon" type="image/png" href="https://i.postimg.cc/gkbfN52c/Logo-asynctas-1x.png" />
 <link rel="stylesheet" href="/styles.css?v=${REDEEM_ASSET_VERSION}" />
-<script>try{var th=localStorage.getItem('asynctas_theme');if(th==='bubble'||th==='classic')document.documentElement.dataset.theme=th;}catch(e){}</script>
+<script>try{var th=localStorage.getItem('nigaria_theme');if(th==='bubble'||th==='classic')document.documentElement.dataset.theme=th;}catch(e){}</script>
 </head><body>
 <div class="redeem-page"><div class="card redeem-card">
   <div class="redeem-icon">🎁</div>
@@ -649,9 +636,6 @@ client.once('ready', async () => {
         new SlashCommandBuilder().setName('tasks').setDescription('Xem tiến độ nhiệm vụ vượt link hôm nay'),
         new SlashCommandBuilder().setName('vmosfree').setDescription('Lấy 1 VMOS free mỗi ngày (cần vượt 1 link hôm nay)'),
         new SlashCommandBuilder().setName('vsphonefree').setDescription('Lấy 1 VSPhone thường free mỗi ngày (cần vượt 1 link hôm nay)'),
-        new SlashCommandBuilder().setName('cloudstatus').setDescription('Xem trạng thái VMOS Cloud và VSPhone'),
-        new SlashCommandBuilder().setName('cloudphone_status').setDescription('Xem trạng thái cloudphone như web (VMOS / VSPhone)')
-            .addBooleanOption(o => o.setName('lam_moi').setDescription('Bỏ cache, gọi lại API ngay').setRequired(false)),
         new SlashCommandBuilder().setName('theme').setDescription('Đổi giao diện web (Bubble / Classic)')
             .addStringOption(o => o.setName('kieu').setDescription('Chọn giao diện').setRequired(true)
                 .addChoices({ name: 'Bubble Interface', value: 'bubble' }, { name: 'Classic', value: 'classic' })),
@@ -673,12 +657,6 @@ client.once('ready', async () => {
         new SlashCommandBuilder().setName('wallpaper').setDescription('(Admin) Đổi ảnh nền web')
             .addStringOption(o => o.setName('url').setDescription('URL ảnh http(s), để trống để xem hiện tại').setRequired(false))
             .addBooleanOption(o => o.setName('xoa').setDescription('Đặt lại ảnh nền mặc định').setRequired(false)),
-        new SlashCommandBuilder().setName('proxy').setDescription('(Admin) Xem / đổi proxy trạng thái cloud')
-            .addStringOption(o => o.setName('proxy').setDescription('URL proxy mới, để trống để xem hiện tại').setRequired(false))
-            .addBooleanOption(o => o.setName('xoa').setDescription('Xoá proxy đang dùng').setRequired(false)),
-        new SlashCommandBuilder().setName('cookie').setDescription('(Admin) Cập nhật cookie mua nhanh dùng cho mua máy')
-            .addStringOption(o => o.setName('cookie').setDescription('Cookie mới (không hiện lại nội dung)').setRequired(false))
-            .addBooleanOption(o => o.setName('xoa').setDescription('Xoá cookie hiện tại').setRequired(false)),
         new SlashCommandBuilder().setName('reg').setDescription('Tạo tài khoản cloud nhanh (Panel chọn dịch vụ)'),
         new SlashCommandBuilder().setName('vi').setDescription('Xem số dư xu của bạn'),
         new SlashCommandBuilder().setName('code').setDescription('Nhập Gift Code để nhận xu')
@@ -688,18 +666,6 @@ client.once('ready', async () => {
                 .addChoices({ name: 'UGPhone', value: 'UG' }, { name: 'VMOS', value: 'VM' }, { name: 'VSPhone', value: 'VS' }))
             .addStringOption(o => o.setName('server').setDescription('Khu vực (bắt buộc với UGPhone)').setRequired(false)
                 .addChoices({ name: 'Singapore', value: 'SG' }, { name: 'Hong Kong', value: 'HK' }, { name: 'Japan', value: 'JP' }, { name: 'Germany', value: 'DE' }, { name: 'US', value: 'US' })),
-        new SlashCommandBuilder().setName('asynctas').setDescription('Mua nhanh UGPhone (49 xu) hoặc VSPhone VIP (15 xu)')
-            .addStringOption(o => o.setName('provider').setDescription('Chọn dịch vụ').setRequired(true)
-                .addChoices(
-                    { name: 'UGPhone — 49 xu', value: 'UG' },
-                    { name: 'VSPhone VIP — 15 xu', value: 'VSVIP' }
-                )),
-        new SlashCommandBuilder().setName('meows').setDescription('(Lệnh cũ) Mua nhanh UGPhone (49 xu) hoặc VSPhone VIP (15 xu)')
-            .addStringOption(o => o.setName('provider').setDescription('Chọn dịch vụ').setRequired(true)
-                .addChoices(
-                    { name: 'UGPhone — 49 xu', value: 'UG' },
-                    { name: 'VSPhone VIP — 15 xu', value: 'VSVIP' }
-                )),
         new SlashCommandBuilder().setName('shop').setDescription('Xem danh sách hàng hoá và giá trong shop'),
         new SlashCommandBuilder().setName('connect').setDescription('Liên kết tài khoản web với Discord để đồng bộ coin')
             .addStringOption(o => o.setName('token').setDescription('Token 64 ký tự lấy trong mục Hồ sơ trên web').setRequired(true)),
@@ -839,44 +805,30 @@ function buildRegPanel(ownerId) {
             `• VSPhone — ${vsReady ? `${REG_COST} xu` : 'Sắp có'}`,
             `• VSPhone Free — 0 xu${vsReady ? ' (1 link/ngày)' : ' (sắp có)'}`,
             '',
-            '**Mua nhanh ASYNCTAS**',
-            `• UGPhone — ${MEOWS_COSTS.UG} xu`,
-            `• VSPhone VIP — ${MEOWS_COSTS.VSVIP} xu`,
             '',
             '💰 Chỉ trừ xu khi tạo thành công.',
             '',
             '*Panel chỉ dùng được bởi người đã mở lệnh.*'
         ].join('\n'))
         .setColor(0x00B0F4)
-        .setFooter({ text: 'ASYNCTAS • Reg System' });
+        .setFooter({ text: 'NIGARIA CLOUD • Reg System' });
     if (logos.VM) main.setThumbnail(logos.VM);
 
-    const ugEmbed = new EmbedBuilder()
-        .setTitle('UGPhone — Mua nhanh')
-        .setDescription(`Tài khoản trả về ngay · **${MEOWS_COSTS.UG} xu**`)
-        .setColor(0x5865F2);
-    if (logos.UG) ugEmbed.setThumbnail(logos.UG);
-
     const vsEmbed = new EmbedBuilder()
-        .setTitle('VSPhone — Đăng ký & VIP')
-        .setDescription([
-            `• VSPhone thường — **${REG_COST} xu**${vsReady ? '' : ' (sắp có)'}`,
-            `• VSPhone VIP — **${MEOWS_COSTS.VSVIP} xu**`,
-        ].join('\n'))
+        .setTitle('VSPhone — Đăng ký')
+        .setDescription(`• VSPhone thường — **${REG_COST} xu**${vsReady ? '' : ' (sắp có)'}`)
         .setColor(0x39F58A);
     if (logos.VS) vsEmbed.setThumbnail(logos.VS);
 
     const paidRow = new ActionRowBuilder().addComponents(
         regButton(`reg:vmos:${ownerId}`, `VMOS Cloud · ${REG_COST} xu`, ButtonStyle.Success, 'REG_EMOJI_VMOS', '🌐', false),
-        regButton(`reg:vsphone:${ownerId}`, vsReady ? `VSPhone · ${REG_COST} xu` : 'VSPhone • Sắp có', vsReady ? ButtonStyle.Success : ButtonStyle.Secondary, 'REG_EMOJI_VSPHONE', '🥽', !vsReady),
-        regButton(`reg:meows-ug:${ownerId}`, `UGPhone · ${MEOWS_COSTS.UG} xu`, ButtonStyle.Primary, 'REG_EMOJI_UGPHONE', '🟢', false),
-        regButton(`reg:meows-vsvip:${ownerId}`, `VSPhone VIP · ${MEOWS_COSTS.VSVIP} xu`, ButtonStyle.Primary, 'REG_EMOJI_VSVIP', '💎', false)
+        regButton(`reg:vsphone:${ownerId}`, vsReady ? `VSPhone · ${REG_COST} xu` : 'VSPhone • Sắp có', vsReady ? ButtonStyle.Success : ButtonStyle.Secondary, 'REG_EMOJI_VSPHONE', '🥽', !vsReady)
     );
     const freeRow = new ActionRowBuilder().addComponents(
         regButton(`reg:vmos-free:${ownerId}`, 'VMOS Free · 0 xu', ButtonStyle.Secondary, 'REG_EMOJI_VMOS', '🌐', false),
         regButton(`reg:vsphone-free:${ownerId}`, vsReady ? 'VSPhone Free · 0 xu' : 'VSPhone Free • Sắp có', ButtonStyle.Secondary, 'REG_EMOJI_VSPHONE', '🥽', !vsReady)
     );
-    return { embeds: [main, ugEmbed, vsEmbed], components: [paidRow, freeRow] };
+    return { embeds: [main, vsEmbed], components: [paidRow, freeRow] };
 }
 
 // Lưu tài khoản tạm vào KV để nút "Copy" gửi lại đúng nội dung (có thể thêm nút copy phụ).
@@ -995,57 +947,6 @@ async function regVsphone(interaction, userId) {
     });
 }
 
-/** Dùng chung cho /asynctas và các nút mua nhanh trong /reg. Giả định busyUsers đã được giữ bởi caller. */
-async function buyMeowsForUser(interaction, userId, provider) {
-    const cost = MEOWS_COSTS[provider];
-    if (!cost) return interaction.editReply({ content: '❌ Dịch vụ không hợp lệ.' });
-
-    const balance = await db.getCoins(userId);
-    if (balance < cost) {
-        return interaction.editReply({ content: `❌ Bạn không đủ xu (cần ${cost} xu). Số dư: **${balance} xu**.` });
-    }
-
-    const result = await services.buyMeows(provider);
-    const newBalance = await db.updateCoins(userId, -cost);
-    hook('bot:device:meows', {
-        userId, provider, cost, newBalance, source: result.source || null,
-    });
-    const copyText = result.copyText
-        || [result.account, result.password].filter(Boolean).join('|')
-        || String(result.raw || '').slice(0, 1000);
-    const lines = [
-        `🎯 Dịch vụ: **${MEOWS_NAMES[provider]}**`,
-        `💰 Đã trừ: **${cost} xu** · Số dư: **${newBalance} xu**`,
-    ];
-    if (result.account) lines.push(`📧 \`${result.account}\``);
-    if (result.password) lines.push(`🔑 \`${result.password}\``);
-    if (result.token) lines.push(`🎫 Token: \`${result.token}\``);
-    if (result.userId) lines.push(`🆔 User ID: \`${result.userId}\``);
-    if (!result.account && !result.password) lines.push(`📄 Dữ liệu: \`\`\`${String(copyText).slice(0, 600)}\`\`\``);
-
-    let extraCopy = result.account && result.password
-        ? { text: `${result.account}|${result.password}`, label: 'Copy email|pass' }
-        : null;
-    if (result.injectSnippet) {
-        // Fallback tự chứa base64 rất dài: không đưa vào nội dung Discord (giới hạn 2000 ký tự).
-        if (!result.injectFallback) {
-            lines.push(`🧩 Script giải UGPhone: \`\`\`${result.injectSnippet}\`\`\``);
-            if (result.injectRawUrl) lines.push(`🔗 Gist: ${result.injectRawUrl}`);
-        }
-        extraCopy = { text: result.injectSnippet, label: 'Copy script giải' };
-    }
-    if (result.injectError) {
-        lines.push(`⚠️ Script giải (dự phòng): ${String(result.injectError).slice(0, 120)}`);
-    }
-    return sendAccountWithCopy(interaction, {
-        header: `Mua ${MEOWS_NAMES[provider]} thành công!`,
-        copyText,
-        lines,
-        extraCopy,
-        copyLabel: extraCopy ? 'Copy đầy đủ' : 'Copy acc|pass',
-    });
-}
-
 // Xử lý nút Copy acc|pass
 async function handleCopyButton(interaction) {
     const id = interaction.customId.split(':')[1];
@@ -1087,12 +988,8 @@ async function handleRegButton(interaction) {
         }
         if (service === 'vmos') await regVmos(interaction, userId);
         else if (service === 'vsphone') await regVsphone(interaction, userId);
-        else if (service === 'meows-ug') await buyMeowsForUser(interaction, userId, 'UG');
-        else if (service === 'meows-vsvip') await buyMeowsForUser(interaction, userId, 'VSVIP');
         else await interaction.editReply({ content: '🚧 Dịch vụ này sắp có.' });
-        const regCost = service === 'meows-ug' ? MEOWS_COSTS.UG
-            : service === 'meows-vsvip' ? MEOWS_COSTS.VSVIP
-                : REG_COST;
+        const regCost = REG_COST;
         hook('bot:device:reg', { service, userId, cost: regCost });
     } catch (error) {
         console.error(`[reg:${service}] lỗi:`, error, error.cause);
@@ -1371,28 +1268,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // LỆNH /cloudstatus & /cloudphone_status — đồng bộ GET /api/status/cloud
-    if (interaction.commandName === 'cloudstatus' || interaction.commandName === 'cloudphone_status') {
-        await interaction.deferReply();
-        try {
-            const force = interaction.commandName === 'cloudphone_status'
-                && interaction.options.getBoolean('lam_moi') === true;
-            const data = await services.getCloudStatus({ force });
-            const embed = new EmbedBuilder()
-                .setColor(0x39f58a)
-                .setTitle('📡 Cloud Status')
-                .setDescription([
-                    deviceStatusLine('VMOS Cloud', data.vmos),
-                    deviceStatusLine('VSPhone', data.vsphone),
-                ].join('\n'))
-                .setFooter({ text: `Nguồn: ${data.source || 'cache'} · ${new Date(data.checkedAt).toLocaleTimeString('vi-VN')}` });
-            if (data.errors && data.errors.length) embed.addFields({ name: '⚠️ Lỗi', value: data.errors.join('\n').slice(0, 900) });
-            return interaction.editReply({ embeds: [embed] });
-        } catch (e) {
-            return interaction.editReply({ content: `❌ Lỗi kiểm tra Cloud Status: ${e.message}`.slice(0, 1900) });
-        }
-    }
-
     // LỆNH /theme — đồng bộ POST /api/profile/theme
     if (interaction.commandName === 'theme') {
         const theme = String(interaction.options.getString('kieu') || '').toLowerCase();
@@ -1558,52 +1433,25 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // LỆNH ADMIN /wallpaper, /proxy, /cookie — đồng bộ phần cài đặt web
-    if (['wallpaper', 'proxy', 'cookie'].includes(interaction.commandName)) {
+    // LỆNH ADMIN /wallpaper — đổi ảnh nền web
+    if (interaction.commandName === 'wallpaper') {
         if (!(await isAdmin(userId))) {
             return interaction.reply({ content: '❌ Không có quyền.', flags: MessageFlags.Ephemeral });
         }
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
-            if (interaction.commandName === 'wallpaper') {
-                const reset = interaction.options.getBoolean('xoa') === true;
-                const url = reset ? '' : String(interaction.options.getString('url') || '').trim();
-                if (!reset && url && !/^https?:\/\//i.test(url)) {
-                    return interaction.editReply({ content: '❌ URL ảnh phải bắt đầu bằng http:// hoặc https://' });
-                }
-                if (interaction.options.getString('url') === null && !reset) {
-                    const current = await db.getKv('admin_background_url');
-                    return interaction.editReply({ content: `🖼️ Ảnh nền hiện tại: ${current || '(mặc định)'}` });
-                }
-                await db.setKv('admin_background_url', url);
-                hook('bot:admin:background', { url, by: userId });
-                return interaction.editReply({ content: url ? `✅ Đổi ảnh nền web thành \`${url}\`.` : '✅ Đặt lại ảnh nền mặc định.' });
-            }
-
-            if (interaction.commandName === 'proxy') {
-                const reset = interaction.options.getBoolean('xoa') === true;
-                const value = reset ? '' : interaction.options.getString('proxy');
-                if (value === null && !reset) {
-                    const current = await db.getKv('meows_status_proxy');
-                    return interaction.editReply({ content: `🌐 Proxy đang dùng: ${maskProxy(current)}` });
-                }
-                const proxy = services.normalizeStatusProxy(value || '');
-                await db.setKv('meows_status_proxy', proxy);
-                hook('bot:admin:proxy', { proxy: maskProxy(proxy), by: userId });
-                return interaction.editReply({ content: proxy ? `✅ Đổi proxy thành \`${maskProxy(proxy)}\`.` : '✅ Đã xoá proxy.' });
-            }
-
             const reset = interaction.options.getBoolean('xoa') === true;
-            const raw = reset ? '' : interaction.options.getString('cookie');
-            if (raw === null && !reset) {
-                const configured = !!(await services.getMeowsCookie());
-                return interaction.editReply({ content: `🍪 Cookie mua nhanh ASYNCTAS: ${configured ? 'đã cấu hình' : 'chưa cấu hình'}.` });
+            const url = reset ? '' : String(interaction.options.getString('url') || '').trim();
+            if (!reset && url && !/^https?:\/\//i.test(url)) {
+                return interaction.editReply({ content: '❌ URL ảnh phải bắt đầu bằng http:// hoặc https://' });
             }
-            const cookie = reset ? '' : services.normalizeMeowsCookie(raw || '');
-            await db.setKv(services.MEOWS_COOKIE_KEY, cookie);
-            await db.setKv('meows_cookie_updated_at', new Date().toISOString());
-            hook('bot:admin:cookie', { by: userId, configured: !!cookie });
-            return interaction.editReply({ content: cookie ? '✅ Đã cập nhật cookie ASYNCTAS.' : '✅ Đã xoá cookie ASYNCTAS.' });
+            if (interaction.options.getString('url') === null && !reset) {
+                const current = await db.getKv('admin_background_url');
+                return interaction.editReply({ content: `🖼️ Ảnh nền hiện tại: ${current || '(mặc định)'}` });
+            }
+            await db.setKv('admin_background_url', url);
+            hook('bot:admin:background', { url, by: userId });
+            return interaction.editReply({ content: url ? `✅ Đổi ảnh nền web thành \`${url}\`.` : '✅ Đặt lại ảnh nền mặc định.' });
         } catch (e) {
             return interaction.editReply({ content: `❌ Lỗi cài đặt: ${e.message}`.slice(0, 1900) });
         }
@@ -1633,27 +1481,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Nhập code thành công! Bạn nhận được **${amount} xu**.\n💰 Số dư mới: **${newBalance} xu**` });
         } catch (error) {
             await interaction.editReply({ content: `❌ Lỗi khi nhập code.` });
-        }
-    }
-
-    // LỆNH /asynctas (alias cũ: /meows) — mua UGPhone / VSPhone VIP.
-    if (interaction.commandName === 'asynctas' || interaction.commandName === 'meows') {
-        const provider = String(interaction.options.getString('provider') || '').toUpperCase();
-        const cost = MEOWS_COSTS[provider];
-        if (!cost) return interaction.reply({ content: '❌ Dịch vụ không hợp lệ.', flags: MessageFlags.Ephemeral });
-
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        if (busyUsers.has(userId)) {
-            return interaction.editReply({ content: '⏳ Bạn đang có thao tác khác, thử lại sau giây lát.' });
-        }
-        busyUsers.add(userId);
-        try {
-            return await buyMeowsForUser(interaction, userId, provider);
-        } catch (error) {
-            console.error(`[asynctas:${provider}] lỗi:`, error);
-            return interaction.editReply({ content: `❌ ${error.message}`.slice(0, 1900) });
-        } finally {
-            busyUsers.delete(userId);
         }
     }
 

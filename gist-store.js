@@ -13,9 +13,9 @@ const db = require('./database');
 const github = require('./github');
 
 const KINDS = {
-    chat: { kv: 'gist_chat', file: 'asynctas-chat.json', days: 30, field: 'messages', local: 'gist-chat.json' },
-    orders: { kv: 'gist_orders', file: 'asynctas-orders.json', days: 7, field: 'orders', local: 'gist-orders.json' },
-    links: { kv: 'gist_links', file: 'asynctas-links.json', days: 7, field: 'links', local: 'gist-links.json' },
+    chat: { kv: 'gist_chat', file: 'nigaria-chat.json', days: 30, field: 'messages', local: 'gist-chat.json' },
+    orders: { kv: 'gist_orders', file: 'nigaria-orders.json', days: 7, field: 'orders', local: 'gist-orders.json' },
+    links: { kv: 'gist_links', file: 'nigaria-links.json', days: 7, field: 'links', local: 'gist-links.json' },
 };
 const ALIASES = {
     chat: 'chat', message: 'chat', messages: 'chat',
@@ -33,7 +33,7 @@ function kindFor(namespace) {
 function config(kind) {
     return KINDS[kind] || {
         kv: `gist_${kind}`,
-        file: `asynctas-${kind}.json`,
+        file: `nigaria-${kind}.json`,
         days: null,
         field: 'items',
         local: `gist-${kind}.json`,
@@ -86,7 +86,7 @@ async function read(kind) {
         try {
             let gistId = await db.getKv(cfg.kv);
             if (!gistId) {
-                const gist = await github.createGist(cfg.file, JSON.stringify(empty(kind)), `ASYNCTAS ${kind}`);
+                const gist = await github.createGist(cfg.file, JSON.stringify(empty(kind)), `NIGARIA CLOUD ${kind}`);
                 gistId = gist.id;
                 await db.setKv(cfg.kv, gistId);
                 return empty(kind);
@@ -107,7 +107,7 @@ async function write(kind, data) {
         try {
             let gistId = await db.getKv(cfg.kv);
             if (!gistId) {
-                const gist = await github.createGist(cfg.file, JSON.stringify(payload), `ASYNCTAS ${kind}`);
+                const gist = await github.createGist(cfg.file, JSON.stringify(payload), `NIGARIA CLOUD ${kind}`);
                 await db.setKv(cfg.kv, gist.id);
                 return payload;
             }

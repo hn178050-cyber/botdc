@@ -28,7 +28,7 @@ async function gh(pathname, options = {}) {
             Authorization: `Bearer ${token}`,
             Accept: 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28',
-            'User-Agent': 'asynctas-shop',
+            'User-Agent': 'nigaria-shop',
             ...(options.headers || {}),
         },
     });
@@ -69,13 +69,13 @@ function safeFilename(name) {
 }
 
 async function createGist(filename, content, description) {
-    const name = String(filename || '').trim() || 'asynctas.js';
+    const name = String(filename || '').trim() || 'nigaria.js';
     // GitHub trả 422 `missing_field: files` nếu content rỗng/whitespace — luôn có nội dung tối thiểu.
     const rawBody = String(content == null ? '' : content);
-    const body = rawBody.trim() ? rawBody : `// ASYNCTAS ${description || 'gist'}\n`;
+    const body = rawBody.trim() ? rawBody : `// NIGARIA CLOUD ${description || 'gist'}\n`;
     const attempts = [
-        { description: description || 'ASYNCTAS shop stock', public: false, files: { [name]: { content: body } } },
-        { public: false, files: { 'asynctas.js': { content: body } } },
+        { description: description || 'NIGARIA CLOUD shop stock', public: false, files: { [name]: { content: body } } },
+        { public: false, files: { 'nigaria.js': { content: body } } },
     ];
     let lastError = null;
     for (const payload of attempts) {
@@ -96,7 +96,7 @@ async function readGistFile(gistId, filename) {
     const file = gist.files && gist.files[filename];
     if (!file) throw new Error(`Không tìm thấy file "${filename}" trong gist.`);
     if (file.truncated && file.raw_url) {
-        const res = await fetch(file.raw_url, { headers: { 'User-Agent': 'asynctas-shop' } });
+        const res = await fetch(file.raw_url, { headers: { 'User-Agent': 'nigaria-shop' } });
         if (!res.ok) throw new Error('Không đọc được nội dung gist (raw).');
         return await res.text();
     }

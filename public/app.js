@@ -1,4 +1,4 @@
-/* ASYNCTAS dashboard — vanilla JS, i18n + SVG icons (contract-aligned). */
+/* NIGARIA CLOUD dashboard — vanilla JS, i18n + SVG icons (contract-aligned). */
 'use strict';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -25,13 +25,11 @@ const state = {
   adminReviews: [],
 };
 
-let cloudStatusTimer = null;
 let deviceIdCache = null;
 
 const DEVICE_LOGOS = {
   vmos: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnEz_zC4ZHJBI8GYKBKoLB4OArt8V9lVet6fX5Ndv83w&s=10',
   vsphone: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_g3u538-aiEWP_68-48toiD36I5eBqhVWVI6V0U0uww&s=10',
-  ugphone: 'https://img.utdstc.com/icon/48f/fcd/48ffcdcfb167f38e517727e184da795d34418c94094af934298aacc64fceddb6:600',
 };
 
 // Logo nhà cung cấp link (API cũng trả p.logo, dùng fallback nếu thiếu).
@@ -79,12 +77,12 @@ function toast(message, type = 'ok') {
 
 function getDeviceId() {
   if (deviceIdCache) return deviceIdCache;
-  try { deviceIdCache = localStorage.getItem('asynctas_device_id') || ''; } catch (e) { deviceIdCache = ''; }
+  try { deviceIdCache = localStorage.getItem('nigaria_device_id') || ''; } catch (e) { deviceIdCache = ''; }
   if (!deviceIdCache) {
     deviceIdCache = (window.crypto && crypto.randomUUID)
       ? crypto.randomUUID()
       : `d-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    try { localStorage.setItem('asynctas_device_id', deviceIdCache); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('nigaria_device_id', deviceIdCache); } catch (e) { /* ignore */ }
   }
   return deviceIdCache;
 }
@@ -363,7 +361,7 @@ async function enterApp(user) {
 function applyTheme(theme) {
   const value = theme === 'classic' ? 'classic' : 'bubble';
   document.documentElement.dataset.theme = value;
-  try { localStorage.setItem('asynctas_theme', value); } catch (e) { /* ignore */ }
+  try { localStorage.setItem('nigaria_theme', value); } catch (e) { /* ignore */ }
   $$('[data-theme-choice]').forEach(b => b.classList.toggle('active', b.dataset.themeChoice === value));
   const label = $('#theme-current');
   if (label) setText(label, value === 'bubble' ? 'Bubble' : 'Classic');
@@ -372,7 +370,7 @@ function applyTheme(theme) {
 function applyBackground(url) {
   const value = url ? `url("${String(url).replace(/"/g, '%22').replace(/\n/g, '')}")` : 'none';
   document.documentElement.style.setProperty('--wallpaper', value);
-  try { localStorage.setItem('asynctas_background', String(url || '')); } catch (e) { /* ignore */ }
+  try { localStorage.setItem('nigaria_background', String(url || '')); } catch (e) { /* ignore */ }
 }
 
 function updateLanguageChrome() {
@@ -532,9 +530,7 @@ function loadAdminPanel(name) {
     loadAdminWeeklyRewards().catch(() => {});
   } else if (name === 'products') loadAdminItems().catch(() => {});
   else if (name === 'plugins') loadAdminPlugins().catch(() => {});
-  else if (name === 'services') {
-    loadMeowsCookie().catch(() => {});
-  } else if (name === 'google') loadAdminGmail().catch(err => toast(err.message, 'error'));
+ else if (name === 'google') loadAdminGmail().catch(err => toast(err.message, 'error'));
   else if (name === 'market') loadAdminMarket().catch(() => {});
   else if (name === 'appearance') {
     loadAdminBackground().catch(() => {});
@@ -563,7 +559,7 @@ $$('[data-theme-choice]').forEach(btn => btn.addEventListener('click', async () 
 $$('[data-language-choice]').forEach(btn => btn.addEventListener('click', () => changeLanguage(btn.dataset.languageChoice)));
 $('#lang-toggle').addEventListener('click', () => changeLanguage(getLanguage() === 'vi' ? 'en' : 'vi'));
 
-window.addEventListener('asynctas:languagechange', () => {
+window.addEventListener('nigaria:languagechange', () => {
   updateLanguageChrome();
   if (state.skipLangRefresh) return;
   renderIcons(document);
@@ -579,7 +575,7 @@ window.addEventListener('asynctas:languagechange', () => {
 // ==================== NAVIGATION / SIDEBAR / AVATAR MENU ====================
 const VIEW_TITLE_KEYS = {
   dashboard: 'nav.dashboard', shop: 'nav.shop', 'user-shop': 'nav.userShop',
-  buydevice: 'nav.buydevice', cloudstatus: 'nav.cloudstatus', tasks: 'nav.tasks',
+  buydevice: 'nav.buydevice', tasks: 'nav.tasks',
   google: 'nav.google',
   giftcode: 'nav.giftcode', leaderboard: 'nav.leaderboard', transfer: 'nav.transfer',
   orders: 'nav.orders', seller: 'nav.seller', profile: 'nav.profile',
@@ -638,7 +634,6 @@ function switchView(view) {
   closeSidebar();
   closeAvatarMenu();
   if (location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
-  if (view === 'cloudstatus') startCloudStatusPolling(); else stopCloudStatusPolling();
   loadView(view);
 }
 
@@ -691,7 +686,6 @@ function loadView(view) {
   else if (view === 'user-shop') loadUserShop();
   else if (view === 'orders') loadOrders();
   else if (view === 'seller') loadSeller();
-  else if (view === 'cloudstatus') loadCloudStatus();
   else if (view === 'tasks') loadTasks();
   else if (view === 'google') loadGoogle();
   else if (view === 'giftcode') $('#giftcode-input').focus();
@@ -2089,22 +2083,13 @@ $('#export-revenue-btn').addEventListener('click', () => {
   downloadSellerCsv('seller-revenue.csv', rows);
 });
 
-// ==================== BUY DEVICE / TASKS / STATUS / GIFTS / LB / TRANSFER ====================
+// ==================== BUY DEVICE / TASKS / GIFTS / LB / TRANSFER ====================
 function syncCloudMode() {
   const provider = $('#cloud-provider').value;
-  if (provider !== 'VS') $('#cloud-mode').value = 'buy';
-  const isGetLink = provider === 'VS' && $('#cloud-mode').value === 'getlink';
   $('#cloud-server-wrap').classList.toggle('hidden', provider !== 'UG');
-  $('#cloud-mode-wrap').classList.toggle('hidden', provider !== 'VS');
-  labelButton($('#cloud-buy-btn'), isGetLink ? 'device.getLink' : 'device.buyCloud');
-  const placeholderKey = isGetLink ? 'device.getLinkPlaceholder' : 'device.dataPlaceholder';
-  const input = $('#cloud-input');
-  input.setAttribute('data-i18n-placeholder', placeholderKey);
-  input.placeholder = t(placeholderKey);
 }
 
 $('#cloud-provider').addEventListener('change', syncCloudMode);
-$('#cloud-mode').addEventListener('change', syncCloudMode);
 syncCloudMode();
 
 $('#cloud-buy-btn').addEventListener('click', async e => {
@@ -2112,30 +2097,7 @@ $('#cloud-buy-btn').addEventListener('click', async e => {
   btn.disabled = true;
   const box = $('#cloud-result');
   const provider = $('#cloud-provider').value;
-  const isGetLink = provider === 'VS' && $('#cloud-mode').value === 'getlink';
   try {
-    if (isGetLink) {
-      const data = await api('/api/device/vsphone/getss', {
-        method: 'POST',
-        body: JSON.stringify({ inputData: $('#cloud-input').value }),
-      });
-      box.className = 'result-box';
-      box.innerHTML = `
-        ${data.shareUrl ? `<div class="share-link"><a href="${esc(data.shareUrl)}" target="_blank" rel="noopener">${esc(data.shareUrl)}</a></div>` : ''}
-        <div class="ug-fields"><b>${esc(t('device.shareInfo'))}</b>
-          ${(data.fields || []).map(f => `<div class="ug-field"><span>${esc(f.label)}</span><code${/^(token|password)$/.test(f.label) ? ' class="ug-long"' : ''}>${esc(f.value)}</code></div>`).join('')}
-        </div>
-        <div class="accounts-box">${esc(data.copyText)}</div>
-        ${data.rawResponse ? `<div class="muted" style="margin-top:10px">${esc(t('device.fullResponse'))}</div><div class="accounts-box">${esc(data.rawResponse)}</div>` : ''}
-        <div class="copy-row">
-          ${data.account && data.password ? `<button class="btn btn-soft btn-sm" id="getss-copy-pass">${icon('copy', 14)}<span>${esc(t('device.copyPass'))}</span></button>` : ''}
-          <button class="btn btn-soft btn-sm" id="getss-copy">${icon('copy', 14)}<span>${esc(t('device.copyFull'))}</span></button>
-        </div>`;
-      box.classList.remove('hidden');
-      $('#getss-copy').addEventListener('click', ev => copyText(data.copyText, ev.currentTarget));
-      $('#getss-copy-pass')?.addEventListener('click', ev => copyText(`${data.account}|${data.password}`, ev.currentTarget));
-      return;
-    }
     const data = await api('/api/device/buycloud', {
       method: 'POST',
       body: JSON.stringify({ provider, server: $('#cloud-server').value, inputData: $('#cloud-input').value }),
@@ -2164,55 +2126,6 @@ $$('[data-reg]').forEach(btn => btn.addEventListener('click', async () => {
     box.classList.remove('hidden');
     $('#reg-copy').addEventListener('click', ev => copyText(data.copyText, ev.currentTarget));
     $('#reg-copy-pass')?.addEventListener('click', ev => copyText(`${data.account}|${data.password}`, ev.currentTarget));
-    await refreshUser();
-  } catch (err) { box.className = 'result-box error'; setText(box, err.message); box.classList.remove('hidden'); }
-  finally { btn.disabled = false; }
-}));
-
-$$('[data-meows]').forEach(btn => btn.addEventListener('click', async () => {
-  const provider = btn.dataset.meows;
-  const box = $('#meows-result');
-  const cost = provider === 'UG' ? 49 : 15;
-  const name = provider === 'UG' ? 'UGPhone' : 'VSPhone VIP';
-  if (!window.confirm(t('device.confirmQuick', { name, cost: num(cost) }))) return;
-  btn.disabled = true;
-  try {
-    const data = await api('/api/device/meows', { method: 'POST', body: JSON.stringify({ provider }) });
-    box.className = 'result-box';
-    const isVip = provider === 'VSVIP';
-    const ugFields = data.kind === 'ugphone' && Array.isArray(data.fields) ? data.fields : [];
-    box.innerHTML = `
-      <div>${esc(name)} · ${esc(t('device.newBalance', { amount: num(data.newBalance) }))}</div>
-      ${ugFields.length ? `
-        <div class="ug-fields">
-          <b>${esc(t('device.ugInfo'))}</b>
-          ${ugFields.map(f => `<div class="ug-field"><span>${esc(f.label)}</span><code${f.long ? ' class="ug-long"' : ''}>${esc(f.value)}</code></div>`).join('')}
-        </div>` : `
-        ${data.account ? `<div>${esc(data.account)}</div>` : ''}
-        ${data.password ? `<div>${esc(data.password)}</div>` : ''}`}
-      ${data.token ? `<div>${esc(t('device.tokenLabel'))}: <code>${esc(data.token)}</code></div>` : ''}
-      ${data.userId ? `<div>${esc(t('device.userIdLabel'))}: <code>${esc(data.userId)}</code></div>` : ''}
-      <div class="accounts-box">${esc(data.copyText)}</div>
-      ${data.kind === 'ugphone' ? `
-        ${data.injectFallback && data.injectError ? `<div class="result-box error">${esc(t('device.injectError', { error: data.injectError }))}</div>` : ''}
-        ${data.injectSnippet ? `
-          <div class="ug-script">
-            <b>${esc(t('device.ugScriptTitle'))}</b>
-            <pre class="ug-script-code">${esc(data.injectSnippet)}</pre>
-            <div class="ug-social">
-              <a href="${esc(data.youtubeUrl || 'https://youtube.com')}" target="_blank" rel="noopener">YouTube</a>
-              <a href="${esc(data.discordUrl || 'https://discord.com')}" target="_blank" rel="noopener">Discord</a>
-            </div>
-            <div class="copy-row"><button class="btn btn-soft btn-sm" id="meows-copy-script">${icon('copy', 14)}<span>${esc(t('device.copyScript'))}</span></button></div>
-          </div>` : data.injectError ? `<div class="result-box error">${esc(t('device.injectError', { error: data.injectError }))}</div>` : ''}` : ''}
-      <div class="copy-row">
-        ${isVip && data.account && data.password ? `<button class="btn btn-soft btn-sm" id="meows-copy-pass">${icon('copy', 14)}<span>${esc(t('device.copyPass'))}</span></button>` : ''}
-        <button class="btn btn-soft btn-sm" id="meows-copy">${icon('copy', 14)}<span>${esc(t(isVip ? 'device.copyFull' : 'shop.copyAll'))}</span></button>
-      </div>`;
-    box.classList.remove('hidden');
-    $('#meows-copy').addEventListener('click', ev => copyText(data.copyText, ev.currentTarget));
-    $('#meows-copy-pass')?.addEventListener('click', ev => copyText(`${data.account}|${data.password}`, ev.currentTarget));
-    $('#meows-copy-script')?.addEventListener('click', ev => copyText(data.injectSnippet, ev.currentTarget));
     await refreshUser();
   } catch (err) { box.className = 'result-box error'; setText(box, err.message); box.classList.remove('hidden'); }
   finally { btn.disabled = false; }
@@ -2395,47 +2308,6 @@ if (gmailTaskBtn) gmailTaskBtn.addEventListener('click', async e => {
   } catch (err) {
     if (box) { box.className = 'result-box error'; setText(box, err.message); box.classList.remove('hidden'); }
   } finally { btn.disabled = false; }
-});
-
-function startCloudStatusPolling() {
-  if (cloudStatusTimer) return;
-  cloudStatusTimer = setInterval(() => { if (state.view === 'cloudstatus') loadCloudStatus(true).catch(() => {}); }, 60000);
-}
-function stopCloudStatusPolling() {
-  if (!cloudStatusTimer) return;
-  clearInterval(cloudStatusTimer);
-  cloudStatusTimer = null;
-}
-
-function setDeviceStatus(sel, msgSel, device) {
-  const online = device && device.status === 'online';
-  const el = $(sel);
-  el.className = `status-badge ${online ? 'online' : 'offline'}`;
-  el.innerHTML = icon(online ? 'dot-online' : 'dot-offline', 12) + `<span>${esc(t(online ? 'status.hasMachine' : 'status.noMachine'))}</span>`;
-  const parts = [];
-  if (device && device.message) parts.push(device.message);
-  if (device && device.lastBuyAt) parts.push(t('status.lastBuy', { time: new Date(device.lastBuyAt).toLocaleString(getLanguage() === 'en' ? 'en-US' : 'vi-VN') }));
-  setText(msgSel, parts.join(' · '));
-}
-
-async function loadCloudStatus(force = false) {
-  try {
-    const data = await api(`/api/status/cloud${force ? '?force=1' : ''}`);
-    const sourceLabel = { direct: '', www: 'www', proxy: 'proxy' }[data.source] || '';
-    setText('#cloud-status-time', t('status.updated', { time: new Date(data.checkedAt).toLocaleTimeString(getLanguage() === 'en' ? 'en-US' : 'vi-VN') }) + (sourceLabel ? ` · ${sourceLabel}` : ''));
-    setDeviceStatus('#status-meows-vmos', '#status-meows-vmos-msg', data.vmos);
-    setDeviceStatus('#status-meows-vsphone', '#status-meows-vsphone-msg', data.vsphone);
-    const errorBox = $('#cloud-status-errors');
-    if (data.errors && data.errors.length) { setText(errorBox, data.errors.join(' · ')); errorBox.classList.remove('hidden'); }
-    else errorBox.classList.add('hidden');
-  } catch (err) { toast(err.message, 'error'); }
-}
-
-$('#cloud-status-refresh').addEventListener('click', async e => {
-  e.currentTarget.disabled = true;
-  try { await loadCloudStatus(true); toast(t('status.refreshed')); }
-  catch (err) { toast(err.message, 'error'); }
-  finally { e.currentTarget.disabled = false; }
 });
 
 $('#giftcode-btn').addEventListener('click', async e => {
@@ -2917,69 +2789,6 @@ $('#admin-background-default-btn').addEventListener('click', async () => {
     await loadAdminBackground();
     toast(t('admin.backgroundDefault'));
   } catch (err) { toast(err.message, 'error'); }
-});
-
-async function loadMeowsCookie() {
-  const data = await api('/api/admin/meows/cookie');
-  $('#admin-meows-cookie').value = data.cookie || '';
-  const status = $('#meows-status');
-  setText(status, data.configured ? t('admin.savedCookie') : t('admin.noCookie'));
-  status.title = data.updatedAt ? `${t('status.updated')} ${data.updatedAt}` : '';
-  await loadStatusProxy();
-}
-
-async function loadStatusProxy() {
-  const data = await api('/api/admin/status-proxy');
-  $('#admin-status-proxy').value = data.proxy || '';
-  const pill = $('#status-proxy-source');
-  const active = data.envProxy || data.proxy;
-  setText(pill, active ? active : t('admin.noProxy'));
-}
-
-$('#admin-meows-save-btn').addEventListener('click', async e => {
-  const btn = e.currentTarget;
-  const box = $('#admin-meows-result');
-  btn.disabled = true;
-  try {
-    await api('/api/admin/meows/cookie', { method: 'POST', body: JSON.stringify({ cookie: $('#admin-meows-cookie').value }) });
-    box.className = 'result-box';
-    setText(box, t('admin.cookieSaved'));
-    box.classList.remove('hidden');
-    await loadMeowsCookie();
-  } catch (err) { box.className = 'result-box error'; setText(box, err.message); box.classList.remove('hidden'); }
-  finally { btn.disabled = false; }
-});
-
-$('#admin-meows-clear-btn').addEventListener('click', async e => {
-  if (!window.confirm(t('admin.cookieConfirm'))) return;
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  try { await api('/api/admin/meows/cookie', { method: 'DELETE' }); toast(t('admin.cookieCleared')); await loadMeowsCookie(); }
-  catch (err) { toast(err.message, 'error'); }
-  finally { btn.disabled = false; }
-});
-
-$('#admin-status-proxy-save-btn').addEventListener('click', async e => {
-  const btn = e.currentTarget;
-  const box = $('#admin-status-proxy-result');
-  btn.disabled = true;
-  try {
-    await api('/api/admin/status-proxy', { method: 'POST', body: JSON.stringify({ proxy: $('#admin-status-proxy').value }) });
-    box.className = 'result-box';
-    setText(box, t('admin.proxySaved'));
-    box.classList.remove('hidden');
-    await loadStatusProxy();
-  } catch (err) { box.className = 'result-box error'; setText(box, err.message); box.classList.remove('hidden'); }
-  finally { btn.disabled = false; }
-});
-
-$('#admin-status-proxy-clear-btn').addEventListener('click', async e => {
-  if (!window.confirm(t('admin.proxyConfirm'))) return;
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  try { await api('/api/admin/status-proxy', { method: 'DELETE' }); toast(t('admin.proxyCleared')); await loadStatusProxy(); }
-  catch (err) { toast(err.message, 'error'); }
-  finally { btn.disabled = false; }
 });
 
 async function loadAdminPlugins() {
