@@ -463,6 +463,9 @@ function applyUser() {
 
 function isSeller() { return !!(state.user && (state.user.isSeller || state.user.sellerStatus === 'active')); }
 
+/** Quyền admin do server trả về trong /api/me (dựa trên ADMIN_DISCORD_ID / bảng admins). */
+function isAdmin() { return !!(state.user && state.user.isAdmin); }
+
 /** Menu avatar đổi nhãn theo trạng thái seller; sidebar seller do switchView quản lý. */
 function updateSellerChrome() {
   const seller = isSeller();
@@ -477,7 +480,7 @@ function setActiveSellerTab(name) {
 
 function syncSidebar(view) {
   const seller = view === 'seller';
-  const admin = view === 'admin';
+  const admin = view === 'admin' && isAdmin();
   const nav = $('#nav');
   const sellerNav = $('#seller-nav');
   const adminNav = $('#admin-nav');
@@ -512,6 +515,7 @@ function setActiveAdminTab(name) {
 }
 
 function showAdminPanel(name) {
+  if (!isAdmin()) return;
   const panels = $$('#admin-dashboard-content .tab-panel');
   if (!panels.length) return;
   const target = panels.find(p => p.dataset.adminPanel === name) || panels[0];
@@ -524,6 +528,8 @@ function showAdminPanel(name) {
 }
 
 function loadAdminPanel(name) {
+  // Không gọi API quản trị nếu phiên hiện tại không có quyền admin.
+  if (!isAdmin()) return;
   if (name === 'overview') loadAdminOverview().catch(() => {});
   else if (name === 'users') {
     loadAdminUsers().catch(() => {});
@@ -544,6 +550,8 @@ async function refreshUser() {
   if (!user) { showAuth(); return; }
   state.user = user;
   applyUser();
+  // Quyền có thể bị thu hồi trong lúc đang mở trang: đưa admin về dashboard ngay.
+  if (!isAdmin() && state.view === 'admin') switchView('dashboard');
 }
 
 $$('[data-theme-choice]').forEach(btn => btn.addEventListener('click', async () => {
@@ -627,6 +635,8 @@ $('#avatar-admin').addEventListener('click', () => { closeAvatarMenu(); switchVi
 
 function switchView(view) {
   if (!VIEW_TITLE_KEYS[view]) view = 'dashboard';
+  // Chặn truy cập trực tiếp qua URL/#admin khi không phải admin.
+  if (view === 'admin' && !isAdmin()) view = 'dashboard';
   state.view = view;
   syncSidebar(view);
   $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
