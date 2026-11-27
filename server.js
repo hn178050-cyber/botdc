@@ -1102,28 +1102,19 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // LỆNH /token — lấy token web cố định (cùng link_token dùng cho /connect)
+    // LỆNH /token — chỉ trả về token web cố định (cùng link_token dùng cho /connect)
     if (interaction.commandName === 'token') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
             const user = await ensureWebUserForDiscord(userId, interaction.user);
 
-            const sync = await db.getCoins(userId);
             const needRename = !/[A-Za-z]/.test(String(user.username || ''));
             hook('bot:user:token', {
                 discordId: userId, webUserId: user.id,
                 username: user.username, needsRename: needRename,
             });
-            return interaction.editReply({
-                content: [
-                    '🔑 **Token đăng nhập web của bạn** (cố định, dùng cả cho `/connect`):',
-                    `\`\`\`${user.link_token}\`\`\``,
-                    `👤 Tài khoản web: **${user.username}**`,
-                    `💰 Số dư Discord: **${sync} xu**`,
-                    needRename ? '⚠️ Tên tài khoản hiện chỉ có số. Khi đăng nhập web bạn sẽ được yêu cầu đổi tên.' : '',
-                    '🌐 Dán token ở tab **Token Discord** trên web để đăng nhập.',
-                ].filter(Boolean).join('\n'),
-            });
+            // Chỉ gửi token, không kèm nội dung khác để dễ sao chép.
+            return interaction.editReply({ content: `\`\`\`\n${user.link_token}\n\`\`\`` });
         } catch (error) {
             console.error('[token] lỗi:', error);
             return interaction.editReply({ content: `❌ Lỗi lấy token: ${error.message}`.slice(0, 1900) });
