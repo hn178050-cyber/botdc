@@ -40,7 +40,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Endpoint nhẹ cho keep-alive / external cron kiểm tra app còn thức.
-app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+// dbMode giúp phát hiện ngay trường hợp quên DATABASE_URL -> coin ghi vào JSON
+// tạm của container và bị mất mỗi lần deploy/restart.
+app.get('/api/health', (req, res) => res.json({ ok: true, dbMode: db.mode, ts: Date.now() }));
 
 // Dashboard web + API
 // Asset tĩnh có ?v=... trong index.html nên cache dài an toàn; HTML luôn lấy mới.
@@ -389,6 +391,11 @@ app.post('/redeem/claim', express.json(), async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`\n✅ Web Server đang chạy: http://localhost:${PORT}`);
+    if (db.mode === 'local') {
+        console.warn('[DB] ⚠️ CHẾ ĐỘ LOCAL (JSON): coin sẽ mất khi restart/deploy. Hãy set DATABASE_URL (Neon).');
+    } else {
+        console.log('[DB] ✅ Neon mode — dữ liệu lưu trên PostgreSQL.');
+    }
     keepAlive.start();
 });
 

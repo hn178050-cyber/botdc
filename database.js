@@ -23,6 +23,42 @@ const LOCAL_FILE = process.env.LOCAL_DB_FILE || path.join(__dirname, 'data', 'lo
 /** Nhãn cập nhật theo từng user: web so sánh nhãn này để auto reload khi coin đổi. */
 const COIN_VERSION_PREFIX = 'coin_version:';
 
+/**
+ * Chạy nhiều lệnh Neon trong MỘT transaction.
+ * Dùng cho coin/ACOIN: ghi số dư và tăng nhãn đồng bộ phải cùng thành công
+ * hoặc cùng rollback — nếu không web có thể giữ số dư cũ và hiện như bị reset.
+ */
+async function withNeonTx(fn) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await fn(client);
+        await client.query('COMMIT');
+        return result;
+    } catch (error) {
+        try { await client.query('ROLLBACK'); } catch (_) { /* đã mất kết nối thì thôi */ }
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+/**
+ * Tăng nhãn coin ngay trong transaction, bằng 1 lệnh SQL nguyên tử.
+ * Cách cũ đọc KV rồi ghi lại bị mất update khi 2 lệnh coin chạy cùng lúc,
+ * làm web không nhận ra số dư đã đổi.
+ */
+async function bumpCoinVersionOn(client, userId) {
+    const key = COIN_VERSION_PREFIX + String(userId);
+    const { rows } = await client.query(
+        `INSERT INTO "kv" ("key", "value") VALUES ($1, '1')
+         ON CONFLICT ("key") DO UPDATE
+         SET "value" = (COALESCE("kv"."value"::bigint, 0) + 1)::text
+         RETURNING "value"`,
+        [key]);
+    return rows[0] && rows[0].value;
+}
+
 const EMPTY_DB = {
     user_coins: [],
     sessions: [],
@@ -326,21 +362,23 @@ module.exports = {
             await module.exports.bumpCoinVersion(userId);
             return row.balance;
         }
-        // Ghi nguyên tử trên Neon: tránh mất xu khi 2 lệnh cùng đổi số dư 1 user.
-        const { rows } = await pool.query(
-            `INSERT INTO "user_coins" ("user_id", "balance") VALUES ($1, $2)
-             ON CONFLICT ("user_id") DO UPDATE
-             SET "balance" = GREATEST(0, "user_coins"."balance" + EXCLUDED."balance")
-             RETURNING "balance"`,
-            [String(userId), delta]);
-        let newBalance = Number(rows[0] && rows[0].balance) || 0;
-        if (newBalance < 0) {
-            // User mới bị trừ xu: clamp về 0 như chế độ local.
-            await pool.query('UPDATE "user_coins" SET "balance" = 0 WHERE "user_id" = $1', [String(userId)]);
-            newBalance = 0;
-        }
-        await module.exports.bumpCoinVersion(userId);
-        return newBalance;
+        // Ghi nguyên tử trên Neon: số dư + nhãn đồng bộ cùng 1 transaction.
+        return await withNeonTx(async (client) => {
+            const { rows } = await client.query(
+                `INSERT INTO "user_coins" ("user_id", "balance") VALUES ($1, $2)
+                 ON CONFLICT ("user_id") DO UPDATE
+                 SET "balance" = GREATEST(0, "user_coins"."balance" + EXCLUDED."balance")
+                 RETURNING "balance"`,
+                [String(userId), delta]);
+            let newBalance = Number(rows[0] && rows[0].balance) || 0;
+            if (newBalance < 0) {
+                // User mới bị trừ xu: clamp về 0 như chế độ local.
+                await client.query('UPDATE "user_coins" SET "balance" = 0 WHERE "user_id" = $1', [String(userId)]);
+                newBalance = 0;
+            }
+            await bumpCoinVersionOn(client, userId);
+            return newBalance;
+        });
     },
 
     async getTopCoins(limit = 10) {
@@ -477,12 +515,21 @@ module.exports = {
         if (res.length === 0) await neonFetch('kv', 'POST', { key: String(key), value: String(value) });
         else await neonFetch(`kv?key=eq.${enc(key)}`, 'PATCH', { value: String(value) });
     },
-    /** Tăng nhãn coin của 1 user; web âm thầm so sánh nhãn và reload khi khác nhau. */
+    /** Tăng nhãn coin của 1 user; web âm thầm so sánh nhãn và cập nhật số dư. */
     async bumpCoinVersion(userId) {
         try {
-            const key = COIN_VERSION_PREFIX + String(userId);
-            const current = Number(await module.exports.getKv(key)) || 0;
-            await module.exports.setKv(key, String(current + 1));
+            if (USE_LOCAL) {
+                const key = COIN_VERSION_PREFIX + String(userId);
+                let row = findOne('kv', { key });
+                if (!row) {
+                    row = { key, value: '0' };
+                    table('kv').push(row);
+                }
+                row.value = String((Number(row.value) || 0) + 1);
+                persist();
+                return row.value;
+            }
+            return await bumpCoinVersionOn(pool, userId);
         } catch (e) { /* không làm hỏng giao dịch coin */ }
     },
     async getCoinVersion(userId) {
@@ -1099,21 +1146,26 @@ module.exports = {
             row.balance = Math.max(0, (Number(row.balance) || 0) + delta);
             row.updated_at = new Date().toISOString();
             persist();
+            await module.exports.bumpCoinVersion(userId);
             return row.balance;
         }
-        const { rows } = await pool.query(
-            `INSERT INTO "acoin_balances" ("user_id", "balance", "updated_at") VALUES ($1, $2, $3)
-             ON CONFLICT ("user_id") DO UPDATE
-             SET "balance" = GREATEST(0, "acoin_balances"."balance" + EXCLUDED."balance"),
-                 "updated_at" = EXCLUDED."updated_at"
-             RETURNING "balance"`,
-            [String(userId), delta, new Date().toISOString()]);
-        const balance = Number(rows[0] && rows[0].balance) || 0;
-        if (balance < 0) {
-            await pool.query('UPDATE "acoin_balances" SET "balance" = 0 WHERE "user_id" = $1', [String(userId)]);
-            return 0;
-        }
-        return balance;
+        // ACOIN cũng đổi trên web -> cùng tăng nhãn để web tự cập nhật.
+        return await withNeonTx(async (client) => {
+            const { rows } = await client.query(
+                `INSERT INTO "acoin_balances" ("user_id", "balance", "updated_at") VALUES ($1, $2, $3)
+                 ON CONFLICT ("user_id") DO UPDATE
+                 SET "balance" = GREATEST(0, "acoin_balances"."balance" + EXCLUDED."balance"),
+                     "updated_at" = EXCLUDED."updated_at"
+                 RETURNING "balance"`,
+                [String(userId), delta, new Date().toISOString()]);
+            let balance = Number(rows[0] && rows[0].balance) || 0;
+            if (balance < 0) {
+                await client.query('UPDATE "acoin_balances" SET "balance" = 0 WHERE "user_id" = $1', [String(userId)]);
+                balance = 0;
+            }
+            await bumpCoinVersionOn(client, userId);
+            return balance;
+        });
     },
 
     /** BXH ACOIN: lấy từ acoin_balances, chỉ user có số dư > 0. */

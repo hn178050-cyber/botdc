@@ -829,7 +829,8 @@ UNION ALL SELECT 'orders', count(*) FROM orders;
 | `Neon Error: connection refused / timeout` | Dùng Direct thay vì Pooled, hoặc region khác | Dùng chuỗi có `-pooler`; kiểm tra `sslmode=require`; thử lại sau vài giây (Neon đang wake) |
 | `relation "web_users" does not exist` | Chưa chạy schema | Làm lại [mục 3](#3-chạy-schema-tạo-22-bảng) |
 | Web hiện user nhưng Neon vẫn rỗng | App đang chế độ `local` | Kiểm tra `DATABASE_URL` có được load không; `api.core.dbMode` phải là `'neon'`; restart |
-| Coin không cập nhật trên web | Khác `coin_version` | Web tự reload khi nhãn đổi. Nếu vẫn không, đăng nhập lại |
+| Coin mất sau mỗi deploy/restart | Render đang chạy `local` (file JSON trong container tạm) | Set `DATABASE_URL` trên Render → restart. Log phải hiện `[DB] ✅ Neon mode`. Xem thêm bên dưới |
+| Coin không cập nhật trên web | Nhãn `coin_version` chưa tăng (đã fix bằng transaction) | Web tự cập nhật mỗi 15s. Nếu vẫn lệch, đăng nhập lại để lấy số dư mới |
 | Bot không hiện slash command | Discord chưa register | Đợi tới 1 giờ, reload Discord (`Ctrl+R`), kiểm tra scope `applications.commands` |
 | `403 Your account is suspended` từ GitHub | Token/account GitHub bị khoá | Dùng token account khác (`gh api user` để kiểm tra) |
 | Cloudflare `HTTP 403` khi mua cloud | IP Render bị chặn | Bật [mục 9](#9-proxy-cloudflare-tuỳ-chọn): `HANAMI_USE_PROXY=1` + `API_PROXY` |
@@ -841,12 +842,23 @@ UNION ALL SELECT 'orders', count(*) FROM orders;
 ### Kiểm tra nhanh trạng thái DB
 
 ```bash
+# Cách nhanh nhất: hỏi thẳng server đang dùng DB nào
+curl -fsS https://<domain>/api/health
+# -> {"ok":true,"dbMode":"neon","ts":...}   ✅ đúng
+# -> {"ok":true,"dbMode":"local","ts":...}  ⚠️ coin sẽ reset khi restart
+
 # Xem chế độ DB qua log
-grep -i "neon\|local" /var/log/dev.log
+grep -i "\[DB\]" /var/log/dev.log
+# [DB] ✅ Neon mode — dữ liệu lưu trên PostgreSQL.
+# [DB] ⚠️ CHẾ ĐỘ LOCAL (JSON): coin sẽ mất khi restart/deploy...
 
 # Hoặc trong plugin/API
 api.core.dbMode   # 'neon' | 'local'
 ```
+
+> Nếu `dbMode` là `local` trên production, đây là nguyên nhân phổ biến nhất khiến
+> coin "tự reset": JSON nằm trong filesystem tạm của container, mỗi lần deploy/restart
+> Render tạo container mới nên file biến mất. Chuyển sang Neon là hết.
 
 ---
 
