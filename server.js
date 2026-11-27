@@ -43,7 +43,16 @@ const PORT = process.env.PORT || 3000;
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // Dashboard web + API
-app.use(express.static(path.join(__dirname, 'public')));
+// Asset tĩnh có ?v=... trong index.html nên cache dài an toàn; HTML luôn lấy mới.
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res, filePath) {
+    if (/\.(css|js|svg|png|jpe?g|gif|ico|webp|woff2?)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    } else if (/\.html?$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  },
+}));
 app.use(web.router);
 
 // Plugin mount động: /plugin/<id>/... (script được load từ Gist)

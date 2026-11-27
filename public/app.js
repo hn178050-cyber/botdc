@@ -354,7 +354,8 @@ async function enterApp(user) {
   syncLanguageFromUser(user && user.language);
   applyUser();
   switchView('dashboard');
-  refreshDashboard();
+  // applyUser() đã có user mới: khỏi fetch /api/me thêm một lần.
+  refreshDashboard({ skipUser: true });
 }
 
 // ==================== THEME / LANGUAGE / USER ====================
@@ -637,6 +638,12 @@ function switchView(view) {
   if (!VIEW_TITLE_KEYS[view]) view = 'dashboard';
   // Chặn truy cập trực tiếp qua URL/#admin khi không phải admin.
   if (view === 'admin' && !isAdmin()) view = 'dashboard';
+  // Bấm lại đúng tab đang mở: chỉ đóng menu, không fetch lại cả trang.
+  if (state.view === view && location.hash === `#${view}` && $(`#view-${view}`)?.classList.contains('active')) {
+    closeSidebar();
+    closeAvatarMenu();
+    return;
+  }
   state.view = view;
   syncSidebar(view);
   $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
@@ -708,10 +715,15 @@ function loadView(view) {
 $('#messages-open-chat').addEventListener('click', () => openChatPanel());
 
 // ==================== DASHBOARD / EXCHANGE ====================
-async function refreshDashboard() {
+async function refreshDashboard({ skipUser = false } = {}) {
   try {
-    await refreshUser();
-    const [tasks, purchases] = await Promise.all([api('/api/tasks'), api('/api/purchases')]);
+    if (!skipUser) await refreshUser();
+    // Ba endpoint độc lập: chạy cùng lúc để dashboard lên nhanh hơn.
+    const [tasks, purchases, lb] = await Promise.all([
+      api('/api/tasks'),
+      api('/api/purchases'),
+      api('/api/leaderboard/links'),
+    ]);
     const providers = tasks.providers || [];
     const daily = providers.reduce((sum, p) => sum + Number(p.used || tasks.daily[p.id] || 0), 0);
     const dailyTotal = providers.reduce((sum, p) => sum + Number(p.dailyMax || 0), 0);
@@ -719,7 +731,6 @@ async function refreshDashboard() {
     setText('#stat-daily', `${daily}/${dailyTotal || tasks.dailyMax * 2}`);
     setText('#stat-purchases', num(purchases.purchases.length));
     updateDailyCard(tasks);
-    const lb = await api('/api/leaderboard/links');
     const me = state.user;
     const idx = lb.leaderboard.findIndex(r => r.userId === (me.discordId || `web_${me.id}`));
     setText('#stat-rank', idx >= 0 ? `#${idx + 1}` : '—');
@@ -3250,6 +3261,7 @@ async function sendChatMessage() {
 // ==================== VERSION TAG (SYNC COIN KHÔNG RELOAD) ====================
 let appVersionTag = null;
 let versionSyncing = false;
+let versionPolling = false;
 
 /** Hiệu ứng ngắn để user thấy số dư vừa đổi mà không cần reload trang. */
 function pulseBalance() {
@@ -3267,7 +3279,9 @@ async function syncBalanceFromServer() {
 
 /** Web gửi nhãn âm thầm lên server; khác nhãn thì cập nhật số dư tại chỗ. */
 async function checkAppVersion() {
-  if (!state.user || versionSyncing) return;
+  // Không poll khi tab đang ẩn / đang có request version trước đó dang dở.
+  if (!state.user || document.hidden || versionSyncing || versionPolling) return;
+  versionPolling = true;
   try {
     const data = await api('/api/version');
     const version = String((data && data.version) || '0');
@@ -3282,9 +3296,11 @@ async function checkAppVersion() {
       } finally { versionSyncing = false; }
     }
   } catch (e) { /* âm thầm, không làm phiền user */ }
+  finally { versionPolling = false; }
 }
 
-setInterval(checkAppVersion, 8000);
+// 15s đủ để bắt thay đổi coin từ Discord mà không gây poll liên tục.
+setInterval(checkAppVersion, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkAppVersion(); });
 
 // ==================== INIT ====================

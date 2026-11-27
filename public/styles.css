@@ -24,14 +24,21 @@ body {
   font-family: var(--font);
   color: var(--text);
   background-color: var(--bg);
-  /* Ảnh nền nằm trực tiếp trên body: lớp phủ tối nhẹ để chữ đọc được, ảnh vẫn thấy rõ. */
+  -webkit-font-smoothing: antialiased;
+}
+/* Ảnh nền nằm trên layer fixed riêng: vẫn đứng yên khi cuộn nhưng không bắt
+   browser repaint toàn trang như background-attachment: fixed. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     linear-gradient(180deg, rgba(3, 10, 16, 0.26) 0%, rgba(3, 10, 16, 0.38) 45%, rgba(3, 10, 16, 0.62) 100%),
     var(--wallpaper);
   background-size: cover, cover;
   background-position: center, center;
-  background-attachment: fixed, fixed;
-  -webkit-font-smoothing: antialiased;
 }
 body::before {
   content: '';
@@ -137,6 +144,7 @@ textarea { resize: vertical; }
   border-radius: 50%;
   background: radial-gradient(circle, rgba(57, 245, 138, 0.22), transparent 65%);
   filter: blur(20px);
+  will-change: transform;
   animation: float 9s ease-in-out infinite;
 }
 @keyframes float {
@@ -580,15 +588,14 @@ textarea { resize: vertical; }
   --radius: 26px;
   --shadow: 0 24px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.16);
 }
-[data-theme="bubble"] body {
-  background-color: #050c14;
+[data-theme="bubble"] body { background-color: #050c14; }
+[data-theme="bubble"] body::after {
   background-image:
     radial-gradient(1100px 620px at 12% -8%, rgba(125,255,196,.1), transparent 58%),
     linear-gradient(180deg, rgba(2,8,14,.18) 0%, rgba(2,8,14,.34) 50%, rgba(2,8,14,.58) 100%),
     var(--wallpaper);
   background-size: cover, cover, cover;
   background-position: center, center, center;
-  background-attachment: fixed, fixed, fixed;
 }
 [data-theme="bubble"] body::before {
   background:
@@ -597,7 +604,7 @@ textarea { resize: vertical; }
     radial-gradient(700px 620px at 55% 115%, rgba(255,215,106,.06), transparent 60%);
 }
 /* Classic giữ nền cũ: không dùng ảnh nền dashboard. */
-[data-theme="classic"] body { background-image: none; }
+[data-theme="classic"] body::after { background-image: none; }
 
 [data-theme="bubble"] .auth-glow { background: radial-gradient(circle, rgba(125,255,196,.3), transparent 65%); }
 [data-theme="bubble"] .card,
@@ -1482,3 +1489,59 @@ body.admin-mode .sidebar-brand-texts { display: flex; flex-direction: column; ga
 [data-theme="bubble"] .gmail-history-row,
 [data-theme="bubble"] .gmail-admin-row { background: rgba(255,255,255,.06); }
 [data-theme="bubble"] .gmail-admin-row.pinned { background: rgba(255,212,121,.1); }
+
+/* ==================== PERF: dashboard mượt hơn ==================== */
+/* Chỉ giữ kính mờ trên các bề mặt lớn; bỏ blur trên phần tử lặp/nhỏ để
+   cuộn và chuyển tab không phải render lại backdrop liên tục. */
+[data-theme="bubble"] .stat,
+[data-theme="bubble"] .mini-row,
+[data-theme="bubble"] .purchase-card,
+[data-theme="bubble"] .reward-list li,
+[data-theme="bubble"] .lb-row,
+[data-theme="bubble"] .admin-item,
+[data-theme="bubble"] .result-box,
+[data-theme="bubble"] .link-box,
+[data-theme="bubble"] .btn,
+[data-theme="bubble"] .toast,
+[data-theme="bubble"] .modal .form-control,
+[data-theme="bubble"] .modal textarea {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+[data-theme="bubble"] .modal-root {
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+[data-theme="bubble"] .modal,
+[data-theme="bubble"] .modal.seller-modal {
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+@media (max-width: 720px) {
+  [data-theme="bubble"] .card,
+  [data-theme="bubble"] .auth-card,
+  [data-theme="bubble"] .modal,
+  [data-theme="bubble"] .modal.seller-modal,
+  [data-theme="bubble"] .seller-header,
+  [data-theme="bubble"] .seller-user-card,
+  [data-theme="bubble"] .kpi-card,
+  [data-theme="bubble"] .store-card,
+  [data-theme="bubble"] .order-card,
+  [data-theme="bubble"] .summary-item,
+  [data-theme="bubble"] .metric-item,
+  [data-theme="bubble"] .topbar,
+  [data-theme="bubble"] .sidebar,
+  [data-theme="bubble"] .product {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .auth-glow { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
