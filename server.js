@@ -257,7 +257,7 @@ app.get('/redeem', async (req, res) => {
 <html lang="vi" data-theme="${theme}"><head><meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NIGARIA CLOUD — Vượt link</title>
-<link rel="icon" type="image/png" href="https://i.postimg.cc/gkbfN52c/Logo-asynctas-1x.png" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2339f58a'/%3E%3Ctext x='32' y='44' font-family='Inter,Arial' font-size='38' font-weight='800' text-anchor='middle' fill='%2304160c'%3EN%3C/text%3E%3C/svg%3E" />
 <link rel="stylesheet" href="/styles.css?v=${REDEEM_ASSET_VERSION}" />
 <script>try{var th=localStorage.getItem('nigaria_theme');if(th==='bubble'||th==='classic')document.documentElement.dataset.theme=th;}catch(e){}</script>
 </head><body>
