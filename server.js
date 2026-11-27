@@ -973,6 +973,22 @@ async function handleCopyButton(interaction) {
     });
 }
 
+// Xử lý nút "Sao chép token" ở /token
+async function handleCopyTokenButton(interaction) {
+    const ownerId = interaction.customId.split(':')[1];
+    if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '❌ Nút này không phải của bạn. Dùng `/token` để lấy token của bạn.', flags: MessageFlags.Ephemeral });
+    }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+        const user = await ensureWebUserForDiscord(interaction.user.id, interaction.user);
+        return interaction.editReply({ content: `\`\`\`\n${user.link_token}\n\`\`\`` });
+    } catch (error) {
+        console.error('[copytoken] lỗi:', error);
+        return interaction.editReply({ content: `❌ Lỗi lấy token: ${error.message}`.slice(0, 1900) });
+    }
+}
+
 async function handleRegButton(interaction) {
     const [, service, ownerId] = interaction.customId.split(':');
     const userId = interaction.user.id;
@@ -1010,6 +1026,7 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isModalSubmit() && interaction.customId.startsWith('buycloud:')) return handleBuycloudModal(interaction);
     if (interaction.isButton() && interaction.customId.startsWith('reg:')) return handleRegButton(interaction);
     if (interaction.isButton() && interaction.customId.startsWith('copy:')) return handleCopyButton(interaction);
+    if (interaction.isButton() && interaction.customId.startsWith('copytoken:')) return handleCopyTokenButton(interaction);
     if (!interaction.isChatInputCommand()) return;
     const adminIds = getAdminIds();
     const userId = interaction.user.id;
@@ -1113,8 +1130,18 @@ client.on('interactionCreate', async interaction => {
                 discordId: userId, webUserId: user.id,
                 username: user.username, needsRename: needRename,
             });
-            // Chỉ gửi token, không kèm nội dung khác để dễ sao chép.
-            return interaction.editReply({ content: `\`\`\`\n${user.link_token}\n\`\`\`` });
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`copytoken:${userId}`)
+                    .setLabel('Sao chép token')
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji('📋')
+            );
+            // Chỉ gửi token + nút copy, không kèm nội dung khác.
+            return interaction.editReply({
+                content: `\`\`\`\n${user.link_token}\n\`\`\``,
+                components: [row],
+            });
         } catch (error) {
             console.error('[token] lỗi:', error);
             return interaction.editReply({ content: `❌ Lỗi lấy token: ${error.message}`.slice(0, 1900) });
